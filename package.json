@@ -1,0 +1,15 @@
+{
+  "name": "privacy-peer",
+  "version": "1.0.0",
+  "description": "A file transfer platform with E2EE over P2P",
+  "main": "index.ts",
+  "scripts": {},
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/peerjs": "^1.1.0",
+    "express": "^4.18.2",
+    "peer": "^1.0.2",
+    "peerjs": "^1.5.2"
+  }
+}
