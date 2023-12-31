@@ -1,5 +1,5 @@
 import Peer, { DataConnection } from "peerjs";
-import { log } from "../shared/logger";
+import { log } from "../../../shared/logger";
 
 export enum DataType {
   FILE = "FILE",
