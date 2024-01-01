@@ -1,5 +1,5 @@
 import Peer, { DataConnection } from "peerjs";
-import { log } from "../../../shared/logger";
+import { log } from "../utils/logger";
 
 export enum DataType {
   FILE = "FILE",
@@ -25,15 +25,17 @@ export class PeerConnection {
 
   getPeer = () => this.peer;
 
+  getId = () => this.peer.id;
+
   startPeerSession = () =>
     new Promise<string>((resolve, reject) => {
       try {
         this.peer
-          .on("open", (id) => {
-            log("My ID: " + id);
+          .on("open", (id: string) => {
+            log("connection open");
             resolve(id);
           })
-          .on("error", (err) => {
+          .on("error", (err: Error) => {
             log(err);
             alert(`Error: ${err.message}`); // TODO
           });
@@ -76,7 +78,7 @@ export class PeerConnection {
             this.connections.set(id, conn);
             resolve();
           })
-          .on("error", (err) => {
+          .on("error", (err: Error) => {
             log(err);
             reject(err);
           });
@@ -86,7 +88,7 @@ export class PeerConnection {
     });
 
   onIncomingConnection = (callback: (conn: DataConnection) => void) => {
-    this.peer.on("connection", (conn) => {
+    this.peer.on("connection", (conn: DataConnection) => {
       log("Incoming connection: " + conn.peer);
       this.connections.set(conn.peer, conn);
       callback(conn);
@@ -135,7 +137,7 @@ export class PeerConnection {
     }
     const conn = this.connections.get(id);
     if (conn) {
-      conn.on("data", (receivedData) => {
+      conn.on("data", (receivedData: any) => {
         log("Receiving data from " + id);
         callback(receivedData as Data);
       });
