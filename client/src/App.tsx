@@ -1,8 +1,6 @@
-import React, { FC, useEffect, useState } from "react";
-import logo from "./logo.svg";
+import { FC, useState } from "react";
 import "./App.css";
 import { DataType, PeerConnection } from "libs/peer";
-import { log } from "utils/logger";
 import { downloadFile } from "utils/file";
 
 class Message {
@@ -16,32 +14,24 @@ const App: FC = () => {
   const [message] = useState(() => new Message());
   const [loading, setLoading] = useState(false);
   const [files, setFiles] = useState<File[]>();
-  const [peerList, setPeerList] = useState("");
+  const [peers, setPeers] = useState<string[]>([]);
+  const [newPeerId, setNewPeerId] = useState("");
 
   const startSession = async () => {
     try {
-      const peerConn = new PeerConnection();
+      const peerConn = new PeerConnection(
+        (peers: string[], newPeerId?: string) => {
+          setPeers(peers);
+          if (newPeerId) listenToNewConnection(newPeerId);
+        }
+      );
       await peerConn.startPeerSession();
       setPeerConn(peerConn);
       peerConn.onIncomingConnection((conn) => {
-        const otherPeerId = conn.peer;
-        log("Incoming connection: " + otherPeerId);
-        peerConn.onConnectionDisconnected(otherPeerId, () => {
-          log("Connection closed: " + otherPeerId);
-        });
-        peerConn.onConnectionReceiveData(otherPeerId, (file) => {
-          log("Receiving file " + file.fileName + " from " + otherPeerId);
-          if (file.dataType === DataType.FILE) {
-            downloadFile(
-              file.file as Blob,
-              file.fileName || "fileName",
-              file.fileType
-            );
-          }
-        });
+        const connectingPeerId = conn.peer;
+        message.info("Incoming connection: " + connectingPeerId);
       });
     } catch (err) {
-      log("Error starting session:", err);
       message.error("Error starting session:", err);
     }
   };
@@ -55,7 +45,7 @@ const App: FC = () => {
       message.warning("Please select file");
       return;
     }
-    if (!peerList.length) {
+    if (!peers.length) {
       message.warning("Please select a connection");
       return;
     }
@@ -73,8 +63,32 @@ const App: FC = () => {
       message.info("Send file successfully");
     } catch (err) {
       setLoading(false);
-      console.log(err);
       message.error("Error when sending file");
+    }
+  };
+
+  const onConnectNewPeer = async (id: string) => {
+    if (peerConn) {
+      message.info(`connecting with new peer ${id}`);
+      await peerConn.connectPeer(id);
+      message.info(`connected with new peer ${id}`);
+    } else {
+      message.error("start session first");
+    }
+  };
+
+  const listenToNewConnection = (id: string) => {
+    if (peerConn) {
+      peerConn.onConnectionDisconnected(id, () => {
+        message.info(`connection closed with ${id}`);
+      });
+
+      peerConn.onConnectionReceiveData(id, (file) => {
+        message.info(`receiving file ${file.fileName} from ${id}`);
+        if (file.dataType === DataType.FILE) {
+          // download(file.file || "", file.fileName || "fileName", file.fileType);
+        }
+      });
     }
   };
 
@@ -88,7 +102,7 @@ const App: FC = () => {
       <button
         onClick={async () => {
           await navigator.clipboard.writeText(peerConn?.getId() || "");
-          alert("Copied: " + peerConn?.getId());
+          message.info("Copied: " + peerConn?.getId());
         }}
       >
         Copy
@@ -106,6 +120,19 @@ const App: FC = () => {
       <ol>
         {files?.map((file) => (
           <li key={file.name}>{file.name}</li>
+        ))}
+      </ol>
+
+      <h3>Peers</h3>
+      <input
+        placeholder={"New Peer ID"}
+        onChange={(e) => setNewPeerId(e.target.value)}
+        required
+      />
+      <button onClick={() => onConnectNewPeer(newPeerId)}>Connect</button>
+      <ol>
+        {peers.map((peer) => (
+          <li key={peer}>{peer}</li>
         ))}
       </ol>
 

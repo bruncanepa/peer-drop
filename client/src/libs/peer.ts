@@ -14,25 +14,31 @@ export interface Data {
   message?: string;
 }
 
+type NotifyFn = (peers: string[], newPeer?: string) => any;
+
 export class PeerConnection {
   private peer: Peer;
   private connections: Map<string, DataConnection>;
+  private notify: NotifyFn;
 
-  constructor() {
+  constructor(watchConnections: NotifyFn) {
     this.peer = new Peer();
     this.connections = new Map<string, DataConnection>();
+    this.notify = watchConnections;
   }
 
   getPeer = () => this.peer;
 
   getId = () => this.peer.id;
 
+  getConnections = () => this.connections;
+
   startPeerSession = () =>
     new Promise<string>((resolve, reject) => {
       try {
         this.peer
           .on("open", (id: string) => {
-            log("connection open");
+            log(`connection open ${id}`);
             resolve(id);
           })
           .on("error", (err: Error) => {
@@ -50,7 +56,7 @@ export class PeerConnection {
       try {
         if (this.peer) {
           this.peer.destroy();
-          this.peer = new Peer();
+          this.peer = new Peer({ debug: 3 });
         }
         resolve();
       } catch (err) {
@@ -72,10 +78,14 @@ export class PeerConnection {
       try {
         const conn = this.peer.connect(id, { reliable: true });
         if (!conn) return reject(new Error("Connection can't be established"));
+        this.connections.set(id, conn);
+        this.notify(Array.from(this.connections.keys()), id);
+        resolve();
         conn
           .on("open", () => {
             log("Connect to: " + id);
-            this.connections.set(id, conn);
+            // this.connections.set(id, conn);
+            // this.notify(Array.from(this.connections.keys()), id);
             resolve();
           })
           .on("error", (err: Error) => {
@@ -91,11 +101,12 @@ export class PeerConnection {
     this.peer.on("connection", (conn: DataConnection) => {
       log("Incoming connection: " + conn.peer);
       this.connections.set(conn.peer, conn);
+      this.notify(Array.from(this.connections.keys()), conn.peer);
       callback(conn);
     });
   };
 
-  onConnectionDisconnected = (id: string, callback: () => void) => {
+  onConnectionDisconnected = (id: string, callback?: Function) => {
     if (!this.peer) {
       throw new Error("Peer doesn't start yet");
     }
@@ -107,7 +118,8 @@ export class PeerConnection {
       conn.on("close", () => {
         log("Connection closed: " + id);
         this.connections.delete(id);
-        callback();
+        this.notify(Array.from(this.connections.keys()));
+        callback && callback();
       });
     }
   };
