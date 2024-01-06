@@ -78,14 +78,11 @@ export class PeerConnection {
       try {
         const conn = this.peer.connect(id, { reliable: true });
         if (!conn) return reject(new Error("Connection can't be established"));
-        this.connections.set(id, conn);
-        this.notify(Array.from(this.connections.keys()), id);
-        resolve();
         conn
           .on("open", () => {
             log("Connect to: " + id);
-            // this.connections.set(id, conn);
-            // this.notify(Array.from(this.connections.keys()), id);
+            this.connections.set(id, conn);
+            this.notify(Array.from(this.connections.keys()), id);
             resolve();
           })
           .on("error", (err: Error) => {

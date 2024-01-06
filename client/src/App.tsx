@@ -42,23 +42,24 @@ const App: FC = () => {
 
   const handleUpload = async () => {
     if (!files) {
-      message.warning("Please select file");
-      return;
+      return message.warning("Please select file");
     }
     if (!peers.length) {
-      message.warning("Please select a connection");
-      return;
+      return message.warning("Please select a connection");
+    }
+    if (!peerConn) {
+      return message.warning("Please start a session");
     }
     try {
       setLoading(true);
-      // const blob = new Blob([files], { type: files.type });
+      const blob = new Blob([files[0]], { type: files[0].type });
 
-      // await peerConn.sendConnection(otherPeerId, {
-      //   dataType: DataType.FILE,
-      //   file: blob,
-      //   fileName: file.name,
-      //   fileType: file.type,
-      // });
+      await peerConn.sendConnection(peers[0], {
+        dataType: DataType.FILE,
+        file: blob,
+        fileName: files[0].name,
+        fileType: files[0].type,
+      });
       setLoading(false);
       message.info("Send file successfully");
     } catch (err) {
@@ -109,6 +110,19 @@ const App: FC = () => {
       </button>
       <button onClick={startSession}>Start session</button>
 
+      <h3>Peers</h3>
+      <input
+        placeholder={"New Peer ID"}
+        onChange={(e) => setNewPeerId(e.target.value)}
+        required
+      />
+      <button onClick={() => onConnectNewPeer(newPeerId)}>Connect</button>
+      <ol>
+        {peers.map((peer) => (
+          <li key={peer}>{peer}</li>
+        ))}
+      </ol>
+
       <h3>Select files</h3>
       <input
         type="file"
@@ -122,19 +136,7 @@ const App: FC = () => {
           <li key={file.name}>{file.name}</li>
         ))}
       </ol>
-
-      <h3>Peers</h3>
-      <input
-        placeholder={"New Peer ID"}
-        onChange={(e) => setNewPeerId(e.target.value)}
-        required
-      />
-      <button onClick={() => onConnectNewPeer(newPeerId)}>Connect</button>
-      <ol>
-        {peers.map((peer) => (
-          <li key={peer}>{peer}</li>
-        ))}
-      </ol>
+      <button onClick={() => handleUpload()}>Send files</button>
 
       {loading && <span>Loading...</span>}
     </div>
