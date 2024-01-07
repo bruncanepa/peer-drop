@@ -22,10 +22,13 @@ export class PeerConnection {
   private notify: NotifyFn;
 
   constructor(watchConnections: NotifyFn) {
-    this.peer = new Peer();
+    this.peer = this.initPeer();
     this.connections = new Map<string, DataConnection>();
     this.notify = watchConnections;
   }
+
+  initPeer = () =>
+    new Peer({ host: "127.0.0.1", port: 8081, path: "/sockets", debug: 3 });
 
   getPeer = () => this.peer;
 
@@ -44,6 +47,7 @@ export class PeerConnection {
           .on("error", (err: Error) => {
             log(err);
             alert(`Error: ${err.message}`); // TODO
+            reject(err);
           });
       } catch (err) {
         log(err);
@@ -56,7 +60,7 @@ export class PeerConnection {
       try {
         if (this.peer) {
           this.peer.destroy();
-          this.peer = new Peer({ debug: 3 });
+          this.peer = this.initPeer();
         }
         resolve();
       } catch (err) {
