@@ -22,7 +22,6 @@ const App: FC = () => {
       const peerConn = new PeerConnection(
         (peers: string[], newPeerId?: string) => {
           setPeers(peers);
-          if (newPeerId) listenToNewConnection(newPeerId);
         }
       );
       await peerConn.startPeerSession();
@@ -30,6 +29,7 @@ const App: FC = () => {
       peerConn.onIncomingConnection((conn) => {
         const connectingPeerId = conn.peer;
         message.info("Incoming connection: " + connectingPeerId);
+        listenToNewConnection(connectingPeerId);
       });
     } catch (err) {
       message.error("Error starting session:", err);
@@ -72,6 +72,7 @@ const App: FC = () => {
     if (peerConn) {
       message.info(`connecting with new peer ${id}`);
       await peerConn.connectPeer(id);
+      listenToNewConnection(id);
       message.info(`connected with new peer ${id}`);
     } else {
       message.error("start session first");
@@ -87,7 +88,11 @@ const App: FC = () => {
       peerConn.onConnectionReceiveData(id, (file) => {
         message.info(`receiving file ${file.fileName} from ${id}`);
         if (file.dataType === DataType.FILE) {
-          // download(file.file || "", file.fileName || "fileName", file.fileType);
+          downloadFile(
+            file.file as Blob,
+            file.fileName || "fileName",
+            file.fileType
+          );
         }
       });
     }

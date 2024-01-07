@@ -18,6 +18,7 @@ type NotifyFn = (peers: string[], newPeer?: string) => any;
 
 export class PeerConnection {
   private peer: Peer;
+  // "We recommend keeping track of connections..." https://peerjs.com/docs/#peerconnections
   private connections: Map<string, DataConnection>;
   private notify: NotifyFn;
 
