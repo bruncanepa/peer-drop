@@ -29,7 +29,7 @@ const App: FC = () => {
       peerConn.onIncomingConnection((conn) => {
         const connectingPeerId = conn.peer;
         message.info("Incoming connection: " + connectingPeerId);
-        listenToNewConnection(connectingPeerId);
+        listenToNewConnection(peerConn, connectingPeerId);
       });
     } catch (err) {
       message.error("Error starting session:", err);
@@ -72,30 +72,28 @@ const App: FC = () => {
     if (peerConn) {
       message.info(`connecting with new peer ${id}`);
       await peerConn.connectPeer(id);
-      listenToNewConnection(id);
+      listenToNewConnection(peerConn, id);
       message.info(`connected with new peer ${id}`);
     } else {
       message.error("start session first");
     }
   };
 
-  const listenToNewConnection = (id: string) => {
-    if (peerConn) {
-      peerConn.onConnectionDisconnected(id, () => {
-        message.info(`connection closed with ${id}`);
-      });
+  const listenToNewConnection = (newConn: PeerConnection, id: string) => {
+    newConn.onConnectionDisconnected(id, () => {
+      message.info(`connection closed with ${id}`);
+    });
 
-      peerConn.onConnectionReceiveData(id, (file) => {
-        message.info(`receiving file ${file.fileName} from ${id}`);
-        if (file.dataType === DataType.FILE) {
-          downloadFile(
-            file.file as Blob,
-            file.fileName || "fileName",
-            file.fileType
-          );
-        }
-      });
-    }
+    newConn.onConnectionReceiveData(id, (file) => {
+      message.info(`receiving file ${file.fileName} from ${id}`);
+      if (file.dataType === DataType.FILE) {
+        downloadFile(
+          file.file as Blob,
+          file.fileName || "fileName",
+          file.fileType
+        );
+      }
+    });
   };
 
   return (
