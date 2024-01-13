@@ -92,6 +92,8 @@ const App: FC = () => {
           file.fileName || "fileName",
           file.fileType
         );
+      } else {
+        console.log(`Received message: ${JSON.stringify(file)}`);
       }
     });
   };

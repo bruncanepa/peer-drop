@@ -3,7 +3,7 @@ import { log } from "../utils/logger";
 
 export enum DataType {
   FILE = "FILE",
-  OTHER = "OTHER",
+  MESSAGE = "MESSAGE",
 }
 
 export interface Data {
