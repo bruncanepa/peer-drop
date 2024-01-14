@@ -3,7 +3,7 @@ export type FileIntent = {
   ownerId: string;
   date: Date;
   expires: Date;
-  downloadTimes: number;
+  pendingDownloads: number;
   privateReceipt: string;
   publicReceipt: string;
 };
@@ -17,22 +17,21 @@ export class FileIntentManager {
   }
 
   add = (ownerId: string, downloadTimes = 1): FileIntent => {
-    const intentId = this.getRandomString();
     const date = new Date();
     const expires = new Date(date);
-    expires.setDate(date.getDate() + 1);
+    expires.setDate(date.getDate() + 1); // expires in 1 day
 
     const intent: FileIntent = {
-      id: intentId,
+      id: crypto.randomUUID(),
       ownerId,
       date,
       expires,
-      downloadTimes,
+      pendingDownloads: downloadTimes,
       privateReceipt: this.getRandomString(32),
       publicReceipt: this.getRandomString(),
     };
 
-    this.intents.set(intentId, intent);
+    this.intents.set(intent.id, intent);
 
     return intent;
   };
@@ -43,40 +42,42 @@ export class FileIntentManager {
       console.log(
         `file ${fileId} found but invalid publicReceipt. is ${intent.publicReceipt}, got ${publicReceipt}`
       );
-      throw Error("not found");
+      throw Error(ErrorMessage.NOT_FOUND);
     }
     return this.intentToIntentShared(intent);
   };
 
-  donwloaded = (fileId: string, privateReceipt: string) => {
+  downloaded = (fileId: string, privateReceipt: string): FileIntent => {
     const intent = this.getThrow(fileId);
     if (intent.privateReceipt === privateReceipt) {
-      intent.downloadTimes -= 1;
-      if (intent.downloadTimes === 0) this.intents.delete(fileId);
-      return;
+      intent.pendingDownloads -= 1;
+      if (intent.pendingDownloads === 0) this.intents.delete(fileId);
+      return intent;
     }
     console.log(
       `file ${fileId} found but invalid privateReceipt. is ${intent.privateReceipt}, got ${privateReceipt}`
     );
-    throw Error("not found");
+    throw Error(ErrorMessage.NOT_FOUND);
   };
 
   private getThrow = (fileId: string): FileIntent => {
     const intent = this.intents.get(fileId);
     if (intent) return intent;
-    throw Error("not found");
+    throw Error(ErrorMessage.NOT_FOUND);
   };
 
-  private getRandomString = (length = 16) => {
-    const random = new Uint8Array(length);
-    crypto.getRandomValues(random);
-    return Buffer.from(random).toString("base64");
+  private getRandomString = (length = 20) => {
+    const buffer = new Uint8Array(length);
+    crypto.getRandomValues(buffer);
+    return Buffer.from(buffer)
+      .toString("base64")
+      .replace(/[^a-zA-Z0-9]/g, ""); // remove non alphanumeric chars
   };
 
   private intentToIntentShared = (intent: FileIntent): FileIntentShared => {
     const shared: FileIntentShared = {
       date: new Date(intent.date),
-      downloadTimes: intent.downloadTimes,
+      pendingDownloads: intent.pendingDownloads,
       expires: new Date(intent.expires),
       id: intent.id,
       ownerId: intent.ownerId,
@@ -84,4 +85,8 @@ export class FileIntentManager {
     };
     return shared;
   };
+}
+
+export enum ErrorMessage {
+  NOT_FOUND = "not found",
 }
