@@ -54,7 +54,7 @@ export class PeerConnection {
           })
           .on("error", (err: Error) => {
             log(err);
-            alert(`Error: ${err.message}`); // TODO
+            // alert(`Error: ${err.message}`); // TODO
             reject(err);
           });
       } catch (err) {
