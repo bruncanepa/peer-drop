@@ -1,5 +1,6 @@
 import Peer, { DataConnection } from "peerjs";
 import { log } from "../utils/logger";
+import { CryptoLib } from "./crypto";
 
 export enum DataType {
   FILE = "FILE",
@@ -29,7 +30,13 @@ export class PeerConnection {
   }
 
   initPeer = () =>
-    new Peer({ host: "127.0.0.1", port: 8081, path: "/sockets", debug: 3 });
+    new Peer(this.genId(), {
+      host: "127.0.0.1",
+      port: 8081,
+      path: "/sockets",
+      debug: 3,
+      secure: false,
+    });
 
   getPeer = () => this.peer;
 
@@ -157,4 +164,6 @@ export class PeerConnection {
       });
     }
   };
+
+  private genId = () => `${CryptoLib.uuid(true)}-${CryptoLib.random(8)}`;
 }
