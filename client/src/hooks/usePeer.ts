@@ -1,28 +1,50 @@
-import { useState } from "react";
-import { DataType, PeerConnection } from "libs/peer";
+import { useMemo, useState } from "react";
+import {
+  DataFile,
+  DataFileList,
+  PeerMessageType,
+  IData,
+  PeerConnection,
+  PeerMessage,
+} from "libs/peer";
 import { Message } from "utils/message";
-import { downloadFile } from "utils/file";
 
-export const usePeer = () => {
+type PeerType = "SENDER" | "RECEIVER";
+interface UsePeerProps {
+  peerType: PeerType;
+  onReceiveMessage: (peerId: string, msg: PeerMessage) => void;
+}
+
+const isReceiver = (peerType: PeerType) => peerType === "RECEIVER";
+const isSender = (peerType: PeerType) => peerType === "SENDER";
+const isInterestedInMessage = (peerType: PeerType, msgType: PeerMessageType) =>
+  (isSender(peerType)
+    ? [PeerMessageType.REQ_FILES_DOWNLOAD, PeerMessageType.REQ_FILES_LIST]
+    : [PeerMessageType.RES_FILES_LIST, PeerMessageType.RES_FILES_DOWNLOAD]
+  ).includes(msgType);
+
+export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
   const [message] = useState(() => new Message());
   const [peerConn, setPeerConn] = useState<PeerConnection>();
   const [peers, setPeers] = useState<string[]>([]);
 
-  const listenToNewConnection = (newConn: PeerConnection, id: string) => {
-    newConn.onConnectionDisconnected(id, () => {
-      message.info(`connection closed with ${id}`);
+  const sendToConnection = (
+    peerId: string,
+    dataType: PeerMessageType,
+    data?: IData
+  ) => {
+    return peerConn?.sendConnection(peerId, { type: dataType, data });
+  };
+
+  const listenToNewConnection = (newConn: PeerConnection, peerId: string) => {
+    newConn.onConnectionDisconnected(peerId, () => {
+      message.info(`connection closed with ${peerId}`);
     });
 
-    newConn.onConnectionReceiveData(id, (file) => {
-      message.info(`receiving file ${file.fileName} from ${id}`);
-      if (file.dataType === DataType.FILE) {
-        downloadFile(
-          file.file as Blob,
-          file.fileName || "fileName",
-          file.fileType
-        );
-      } else {
-        message.info(`Received message: ${JSON.stringify(file)}`);
+    newConn.onConnectionReceiveData(peerId, (msg) => {
+      message.info(`receiving file ${msg.type} from ${peerId}`);
+      if (isInterestedInMessage(peerType, msg.type)) {
+        onReceiveMessage(peerId, msg);
       }
     });
   };
@@ -37,6 +59,7 @@ export const usePeer = () => {
         message.info("Incoming connection: " + connectingPeerId);
         listenToNewConnection(peerConn, connectingPeerId);
       });
+      return peerConn;
     } catch (err) {
       message.error("Error starting session:", err);
     }
@@ -59,5 +82,6 @@ export const usePeer = () => {
     peers,
     startPeerSession,
     connectToNewPeer,
+    sendToConnection,
   };
 };

@@ -2,17 +2,31 @@ import Peer, { DataConnection } from "peerjs";
 import { log } from "../utils/logger";
 import { CryptoLib } from "./crypto";
 
-export enum DataType {
-  FILE = "FILE",
-  MESSAGE = "MESSAGE",
+export enum PeerMessageType {
+  REQ_FILES_LIST = "REQ_FILES_LIST",
+  RES_FILES_LIST = "RES_FILES_LIST",
+  REQ_FILES_DOWNLOAD = "REQ_FILES_DOWNLOAD",
+  RES_FILES_DOWNLOAD = "RES_FILES_DOWNLOAD",
 }
 
-export interface Data {
-  dataType: DataType;
-  file?: Blob;
-  fileName?: string;
-  fileType?: string;
-  message?: string;
+export interface IData {}
+
+export interface DataFile extends IData {
+  blob: Blob;
+  name: string;
+  type: string;
+  size: number;
+}
+
+export type DataFileListeItem = Omit<DataFile, "blob">;
+
+export interface DataFileList extends IData {
+  items: DataFileListeItem[];
+}
+
+export interface PeerMessage {
+  type: PeerMessageType;
+  data?: IData;
 }
 
 type NotifyFn = (peers: string[], newPeer?: string) => any;
@@ -133,7 +147,7 @@ export class PeerConnection {
     }
   };
 
-  sendConnection = (id: string, data: Data): Promise<void> =>
+  sendConnection = (id: string, data: PeerMessage): Promise<void> =>
     new Promise((resolve, reject) => {
       if (!this.connections.has(id)) {
         reject(new Error("Connection didn't exist"));
@@ -149,7 +163,10 @@ export class PeerConnection {
       resolve();
     });
 
-  onConnectionReceiveData = (id: string, callback: (f: Data) => void) => {
+  onConnectionReceiveData = (
+    id: string,
+    callback: (f: PeerMessage) => void
+  ) => {
     if (!this.peer) {
       throw new Error("Peer doesn't start yet");
     }
@@ -160,7 +177,7 @@ export class PeerConnection {
     if (conn) {
       conn.on("data", (receivedData: any) => {
         log("Receiving data from " + id);
-        callback(receivedData as Data);
+        callback(receivedData as PeerMessage);
       });
     }
   };
