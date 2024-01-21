@@ -1,21 +1,19 @@
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 import {
-  DataFile,
-  DataFileList,
   PeerMessageType,
   IData,
   PeerConnection,
   PeerMessage,
+  OnReceiveMessageFnType,
 } from "libs/peer";
 import { Message } from "utils/message";
 
 type PeerType = "SENDER" | "RECEIVER";
 interface UsePeerProps {
   peerType: PeerType;
-  onReceiveMessage: (peerId: string, msg: PeerMessage) => void;
+  onReceiveMessage: OnReceiveMessageFnType;
 }
 
-const isReceiver = (peerType: PeerType) => peerType === "RECEIVER";
 const isSender = (peerType: PeerType) => peerType === "SENDER";
 const isInterestedInMessage = (peerType: PeerType, msgType: PeerMessageType) =>
   (isSender(peerType)
@@ -25,52 +23,47 @@ const isInterestedInMessage = (peerType: PeerType, msgType: PeerMessageType) =>
 
 export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
   const [message] = useState(() => new Message());
-  const [peerConn, setPeerConn] = useState<PeerConnection>();
+  const peerConn = useRef<PeerConnection>();
   const [peers, setPeers] = useState<string[]>([]);
+
+  const _onReceiveMessage: OnReceiveMessageFnType = (
+    peerId: string,
+    msg: PeerMessage
+  ) => {
+    message.info(`receiving file ${msg.type} from ${peerId}`);
+    if (isInterestedInMessage(peerType, msg.type)) {
+      onReceiveMessage(peerId, msg);
+    }
+  };
 
   const sendToConnection = (
     peerId: string,
     dataType: PeerMessageType,
     data?: IData
   ) => {
-    return peerConn?.sendConnection(peerId, { type: dataType, data });
-  };
-
-  const listenToNewConnection = (newConn: PeerConnection, peerId: string) => {
-    newConn.onConnectionDisconnected(peerId, () => {
-      message.info(`connection closed with ${peerId}`);
-    });
-
-    newConn.onConnectionReceiveData(peerId, (msg) => {
-      message.info(`receiving file ${msg.type} from ${peerId}`);
-      if (isInterestedInMessage(peerType, msg.type)) {
-        onReceiveMessage(peerId, msg);
-      }
-    });
+    message.debug(`START: sendToConnection to ${peerId} type ${dataType}`);
+    return peerConn.current
+      ?.sendMessageToConnection(peerId, { type: dataType, data })
+      .finally(() =>
+        message.debug(`END: sendToConnection to ${peerId} type ${dataType}`)
+      );
   };
 
   const startPeerSession = async () => {
     try {
-      const peerConn = new PeerConnection((peers: string[]) => setPeers(peers));
-      await peerConn.startPeerSession();
-      setPeerConn(peerConn);
-      peerConn.onIncomingConnection((conn) => {
-        const connectingPeerId = conn.peer;
-        message.info("Incoming connection: " + connectingPeerId);
-        listenToNewConnection(peerConn, connectingPeerId);
-      });
-      return peerConn;
+      const newConn = new PeerConnection((peers: string[]) => setPeers(peers));
+      await newConn.startSession(_onReceiveMessage);
+      peerConn.current = newConn;
     } catch (err) {
       message.error("Error starting session:", err);
     }
   };
 
-  const connectToNewPeer = async (id: string) => {
-    if (peerConn) {
-      message.info(`connecting with new peer ${id}`);
-      await peerConn.connectPeer(id);
-      listenToNewConnection(peerConn, id);
-      message.info(`connected with new peer ${id}`);
+  const connectToNewPeer = async (peerId: string) => {
+    if (peerConn.current) {
+      message.info(`connecting with new peer ${peerId}`);
+      await peerConn.current.connectToNewPeer(peerId, _onReceiveMessage);
+      message.info(`connected with new peer ${peerId}`);
     } else {
       message.error("start session first");
       throw Error("start session first");

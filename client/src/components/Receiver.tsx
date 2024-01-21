@@ -7,9 +7,10 @@ interface ReceiverProps {
 }
 
 const Receiver: FC<ReceiverProps> = ({ sharedId }) => {
-  const { files, fileSession, peers, error, downloadFiles } = usePeerReceiver({
-    sharedId,
-  });
+  const { files, fileSession, peers, error, downloadFiles, peerId } =
+    usePeerReceiver({
+      sharedId,
+    });
 
   if (error) return <span>Error {error.message}</span>;
 
@@ -17,6 +18,7 @@ const Receiver: FC<ReceiverProps> = ({ sharedId }) => {
 
   return (
     <>
+      {!!peerId && <span>Your id: {peerId}</span>}
       <h3>Files to download</h3>
 
       {files.length ? (

@@ -1,6 +1,8 @@
 import Peer, { DataConnection } from "peerjs";
-import { log } from "../utils/logger";
 import { CryptoLib } from "./crypto";
+import { Message } from "utils/message";
+
+const logger = new Message();
 
 export enum PeerMessageType {
   REQ_FILES_LIST = "REQ_FILES_LIST",
@@ -29,7 +31,8 @@ export interface PeerMessage {
   data?: IData;
 }
 
-type NotifyFn = (peers: string[], newPeer?: string) => any;
+type NotifyFn = (peers: string[]) => any;
+export type OnReceiveMessageFnType = (peerId: string, msg: PeerMessage) => any;
 
 export class PeerConnection {
   private peer: Peer;
@@ -58,129 +61,75 @@ export class PeerConnection {
 
   getConnections = () => this.connections;
 
-  startPeerSession = () =>
+  startSession = (onReceiveData: OnReceiveMessageFnType) =>
     new Promise<string>((resolve, reject) => {
-      try {
-        this.peer
-          .on("open", (id: string) => {
-            log(`connection open ${id}`);
-            resolve(id);
-          })
-          .on("error", (err: Error) => {
-            log(err);
-            // alert(`Error: ${err.message}`); // TODO
-            reject(err);
-          });
-      } catch (err) {
-        log(err);
-        reject(err);
-      }
+      this.peer
+        .on("open", (id: string) => {
+          logger.info(`connection open ${id}`);
+          resolve(id);
+        })
+        .on("connection", (conn: DataConnection) => {
+          const connId = conn.peer;
+          logger.info("Incoming connection:", connId);
+          this.connections.set(connId, conn);
+          this.notify(Array.from(this.connections.keys()));
+          this.listenToPeerEvents(connId, conn, onReceiveData);
+        })
+        .on("error", (err: Error) => {
+          logger.error("startPeerSession-error:", err);
+          // alert(`Error: ${err.message}`); // TODO
+          reject(err);
+        });
     });
 
-  closePeerSession = () =>
+  connectToNewPeer = (peerId: string, onReceiveData: OnReceiveMessageFnType) =>
     new Promise<void>((resolve, reject) => {
-      try {
-        if (this.peer) {
-          this.peer.destroy();
-          this.peer = this.initPeer();
-        }
-        resolve();
-      } catch (err) {
-        log(err);
-        reject(err);
+      if (this.connections.has(peerId)) {
+        return reject(new Error("Connection existed"));
       }
+      const conn = this.peer.connect(peerId, { reliable: true });
+      if (!conn) return reject(new Error("Connection can't be established"));
+      this.listenToPeerEvents(peerId, conn, onReceiveData);
     });
 
-  connectPeer = (id: string) =>
-    new Promise<void>((resolve, reject) => {
-      if (!this.peer) {
-        reject(new Error("Peer doesn't start yet"));
-        return;
-      }
-      if (this.connections.has(id)) {
-        reject(new Error("Connection existed"));
-        return;
-      }
-      try {
-        const conn = this.peer.connect(id, { reliable: true });
-        if (!conn) return reject(new Error("Connection can't be established"));
-        conn
-          .on("open", () => {
-            log("Connect to: " + id);
-            this.connections.set(id, conn);
-            this.notify(Array.from(this.connections.keys()), id);
-            resolve();
-          })
-          .on("error", (err: Error) => {
-            log(err);
-            reject(err);
-          });
-      } catch (err) {
-        reject(err);
-      }
-    });
-
-  onIncomingConnection = (callback: (conn: DataConnection) => void) => {
-    this.peer.on("connection", (conn: DataConnection) => {
-      log("Incoming connection: " + conn.peer);
-      this.connections.set(conn.peer, conn);
-      this.notify(Array.from(this.connections.keys()), conn.peer);
-      callback(conn);
-    });
-  };
-
-  onConnectionDisconnected = (id: string, callback?: Function) => {
-    if (!this.peer) {
-      throw new Error("Peer doesn't start yet");
-    }
-    if (!this.connections.has(id)) {
-      throw new Error("Connection didn't exist");
-    }
-    const conn = this.connections.get(id);
-    if (conn) {
-      conn.on("close", () => {
-        log("Connection closed: " + id);
-        this.connections.delete(id);
-        this.notify(Array.from(this.connections.keys()));
-        callback && callback();
-      });
-    }
-  };
-
-  sendConnection = (id: string, data: PeerMessage): Promise<void> =>
+  sendMessageToConnection = (id: string, data: PeerMessage): Promise<void> =>
     new Promise((resolve, reject) => {
       if (!this.connections.has(id)) {
         reject(new Error("Connection didn't exist"));
       }
       try {
         const conn = this.connections.get(id);
-        if (conn) {
-          conn.send(data);
-        }
+        if (conn) conn.send(data);
+        resolve();
       } catch (err) {
+        logger.error("sendConnection", err);
         reject(err);
       }
-      resolve();
     });
 
-  onConnectionReceiveData = (
-    id: string,
-    callback: (f: PeerMessage) => void
-  ) => {
-    if (!this.peer) {
-      throw new Error("Peer doesn't start yet");
-    }
-    if (!this.connections.has(id)) {
-      throw new Error("Connection didn't exist");
-    }
-    const conn = this.connections.get(id);
-    if (conn) {
-      conn.on("data", (receivedData: any) => {
-        log("Receiving data from " + id);
-        callback(receivedData as PeerMessage);
+  private listenToPeerEvents = (
+    peerId: string,
+    conn: DataConnection,
+    onReceiveData: OnReceiveMessageFnType
+  ) =>
+    conn
+      .on("open", () => {
+        logger.info("Connect to: " + peerId);
+        this.connections.set(peerId, conn);
+        this.notify(Array.from(this.connections.keys()));
+      })
+      .on("data", (receivedData: any) => {
+        logger.info("Receiving data from " + peerId);
+        onReceiveData(peerId, receivedData as PeerMessage);
+      })
+      .on("close", () => {
+        logger.info("Connection closed: " + peerId);
+        this.connections.delete(peerId);
+        this.notify(Object.keys(this.connections));
+      })
+      .on("error", (err: Error) => {
+        logger.error("connectPeer-error", err);
       });
-    }
-  };
 
   private genId = () => `${CryptoLib.uuid(true)}-${CryptoLib.random(8)}`;
 }

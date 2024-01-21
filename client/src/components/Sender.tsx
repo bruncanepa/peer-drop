@@ -12,6 +12,7 @@ const Sender: FC<SenderProps> = () => {
     onRemoveFile,
     peers,
     sendingFiles,
+    peerId,
   } = usePeerSender();
 
   return (
@@ -25,6 +26,7 @@ const Sender: FC<SenderProps> = () => {
         margin: "5%",
       }}
     >
+      {!!peerId && <span>Your id: {peerId}</span>}
       <input type="file" multiple onChange={onSelectFiles} />
       <ol
         style={{ width: "100%", paddingRight: "40px", margin: 0, padding: 0 }}

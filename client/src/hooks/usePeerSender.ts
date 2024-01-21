@@ -58,14 +58,13 @@ export const usePeerSender = () => {
 
   const createFileSession = async () => {
     try {
-      const peerConnCur = await startPeerSession();
-      if (!peerConnCur) return;
+      await startPeerSession();
 
       const fileSessionRes: FileSession = await fetch(
         "http://localhost:8081/files/sessions",
         {
           method: "POST",
-          body: JSON.stringify({ userId: peerConnCur.getId() }),
+          body: JSON.stringify({ userId: peerConn.current?.getId() }),
           headers: { "Content-Type": "application/json" },
         }
       ).then((p) => p.json());
@@ -85,22 +84,21 @@ export const usePeerSender = () => {
     fileSession &&
     navigator.clipboard
       .writeText(`${window.location.origin}/${fileSession.id}`)
-      .then(() => console.log("Copied URL:", fileSession.id));
+      .then(() => message.info("Copied URL:", fileSession.id));
 
   const onRemoveFile = (file: File) => {
     setFiles((fs) => fs.filter((f) => f.name !== file.name));
   };
 
   return {
-    createFileSession,
     fileSession,
     startPeerSession,
     onSelectFiles,
     files,
     peers,
-    peerConn,
     sendingFiles,
     copyShareLink,
     onRemoveFile,
+    peerId: peerConn.current?.getId() || "",
   };
 };

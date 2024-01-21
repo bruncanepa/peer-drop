@@ -50,24 +50,42 @@ export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
 
   useEffect(() => {
     // load on first render only
-    if (sharedId) {
-      startPeerSession();
-    }
+    (async () => {
+      if (sharedId) {
+        await startPeerSession();
+        const fs = await getFileSession();
+        if (fs) {
+          sendToConnection(fs.ownerId, PeerMessageType.REQ_FILES_LIST)?.catch(
+            (e) => message.error(e)
+          );
+        }
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    // load when new peer connection set
-    if (peerConn && !fileSession) {
-      getFileSession();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [peerConn, fileSession]);
+  // useEffect(() => {
+  //   // load when new peer connection set
+  //   if (peerConn.current && !fileSession) {
+  //     (async () => {
+  //       const fs = await getFileSession();
+  //       if (fs) {
+  //         sendToConnection(fs.ownerId, PeerMessageType.REQ_FILES_LIST)?.catch(
+  //           (e) => console.log(e)
+  //         );
+  //       }
+  //     })();
+  //   }
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [peerConn.current, fileSession]);
 
   // useEffect(() => {
   //   // ask for file list from sender
   //   if (fileSession) {
-  //     sendToConnection(fileSession.ownerId, PeerMessageType.REQ_FILES_LIST);
+  //     sendToConnection(
+  //       fileSession.ownerId,
+  //       PeerMessageType.REQ_FILES_LIST
+  //     )?.catch((e) => console.log(e));
   //   }
   //   // eslint-disable-next-line react-hooks/exhaustive-deps
   // }, [fileSession]);
@@ -81,8 +99,9 @@ export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
         }
       ).then((p) => p.json());
 
-      connectToNewPeer(fileSessionRes.ownerId);
+      await connectToNewPeer(fileSessionRes.ownerId);
       setFilSession(fileSessionRes);
+      return fileSessionRes;
     } catch (err) {
       const error = err as Error;
       setError(error);
@@ -100,5 +119,6 @@ export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
     peers,
     error,
     downloadFiles,
+    peerId: peerConn.current?.getId() || "",
   };
 };
