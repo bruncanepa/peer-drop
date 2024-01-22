@@ -7,10 +7,9 @@ import {
   PeerMessage,
   PeerMessageType,
 } from "libs/peer";
-import { Message } from "utils/message";
+import { Logger } from "utils/logger";
 
 export const usePeerSender = () => {
-  const [message] = useState(() => new Message());
   const [files, setFiles] = useState<File[]>([]);
   const [fileSession, setFilSession] = useState<FileSession>();
   const [sendingFiles, setSendingFiles] = useState(false);
@@ -19,59 +18,58 @@ export const usePeerSender = () => {
     switch (msg.type) {
       case PeerMessageType.REQ_FILES_DOWNLOAD: {
         setSendingFiles(true);
-        const data: DataFile = {
-          blob: new Blob([files[0]], { type: files[0].type }),
-          name: files[0].name,
-          type: files[0].type,
-          size: files[0].size,
-        };
-        return sendToConnection(
-          peerId,
-          PeerMessageType.RES_FILES_DOWNLOAD,
-          data
-        )
-          ?.then(() => message.info(`Send file ${data.name} successfully`))
-          .catch((err) =>
-            message.error(`Error sending file ${data.name}:`, err)
-          )
+        const file = files[0];
+        return sendMessageToPeer(peerId, {
+          type: PeerMessageType.RES_FILES_DOWNLOAD,
+          data: {
+            blob: new Blob([file], { type: file.type }),
+            name: file.name,
+            type: file.type,
+            size: file.size,
+          } as DataFile,
+        })
+          .then(() => Logger.info(`Send file ${file.name} successfully`))
+          .catch((err) => Logger.error(`Error sending file ${file.name}:`, err))
           .finally(() => setSendingFiles(false));
       }
       case PeerMessageType.REQ_FILES_LIST: {
-        const data: DataFileList = {
-          items: files.map((f) => ({
-            name: f.name,
-            size: f.size,
-            type: f.type,
-          })),
-        };
-        return sendToConnection(peerId, PeerMessageType.RES_FILES_LIST, data)
-          ?.then(() => message.info("Send file list successfully"))
-          .catch((err) => message.error(`Error sending file list:`, err));
+        return sendMessageToPeer(peerId, {
+          type: PeerMessageType.RES_FILES_LIST,
+          data: {
+            items: files.map((f) => ({
+              name: f.name,
+              size: f.size,
+              type: f.type,
+            })),
+          } as DataFileList,
+        })
+          .then(() => Logger.info("Send file list successfully"))
+          .catch((err) => Logger.error(`Error sending file list:`, err));
       }
     }
   };
 
-  const { peerConn, peers, sendToConnection, startPeerSession } = usePeer({
+  const { myPeer, peers, sendMessageToPeer, startSession } = usePeer({
     peerType: "SENDER",
     onReceiveMessage,
   });
 
   const createFileSession = async () => {
     try {
-      await startPeerSession();
+      await startSession();
 
       const fileSessionRes: FileSession = await fetch(
         "http://localhost:8081/files/sessions",
         {
           method: "POST",
-          body: JSON.stringify({ userId: peerConn.current?.getId() }),
+          body: JSON.stringify({ userId: myPeer.id }),
           headers: { "Content-Type": "application/json" },
         }
       ).then((p) => p.json());
 
       setFilSession(fileSessionRes);
     } catch (err) {
-      message.error("couldn't create file session", err);
+      Logger.error("couldn't create file session", err);
     }
   };
 
@@ -84,21 +82,21 @@ export const usePeerSender = () => {
     fileSession &&
     navigator.clipboard
       .writeText(`${window.location.origin}/${fileSession.id}`)
-      .then(() => message.info("Copied URL:", fileSession.id));
+      .then(() => Logger.info("Copied URL:", fileSession.id));
 
   const onRemoveFile = (file: File) => {
     setFiles((fs) => fs.filter((f) => f.name !== file.name));
   };
 
   return {
-    fileSession,
-    startPeerSession,
-    onSelectFiles,
-    files,
+    peerId: myPeer.id,
     peers,
+    files,
+    fileSession,
     sendingFiles,
+    startSession,
+    onSelectFiles,
     copyShareLink,
     onRemoveFile,
-    peerId: peerConn.current?.getId() || "",
   };
 };

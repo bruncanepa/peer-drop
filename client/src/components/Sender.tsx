@@ -6,13 +6,13 @@ interface SenderProps {}
 
 const Sender: FC<SenderProps> = () => {
   const {
-    onSelectFiles,
-    copyShareLink,
+    peerId,
     files,
-    onRemoveFile,
     peers,
     sendingFiles,
-    peerId,
+    onSelectFiles,
+    copyShareLink,
+    onRemoveFile,
   } = usePeerSender();
 
   return (

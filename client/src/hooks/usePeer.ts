@@ -1,14 +1,14 @@
-import { useRef, useState } from "react";
-import {
-  PeerMessageType,
-  IData,
-  PeerConnection,
-  PeerMessage,
-  OnReceiveMessageFnType,
-} from "libs/peer";
-import { Message } from "utils/message";
+import { CryptoLib } from "libs/crypto";
+import { PeerMessage, PeerMessageType } from "libs/peer";
+import Peer, { DataConnection } from "peerjs";
+import { useState } from "react";
+import { Logger } from "utils/logger";
+import { ImmutableRecord } from "utils/record";
+
+export type OnReceiveMessageFnType = (peerId: string, msg: PeerMessage) => any;
 
 type PeerType = "SENDER" | "RECEIVER";
+
 interface UsePeerProps {
   peerType: PeerType;
   onReceiveMessage: OnReceiveMessageFnType;
@@ -22,59 +22,98 @@ const isInterestedInMessage = (peerType: PeerType, msgType: PeerMessageType) =>
   ).includes(msgType);
 
 export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
-  const [message] = useState(() => new Message());
-  const peerConn = useRef<PeerConnection>();
-  const [peers, setPeers] = useState<string[]>([]);
+  const [peers, setPeers] = useState<Record<string, DataConnection>>({});
+  const [myPeer] = useState(
+    () =>
+      new Peer(genId(), {
+        host: "127.0.0.1",
+        port: 8081,
+        path: "/sockets",
+        debug: 3,
+        secure: false,
+      })
+  );
 
   const _onReceiveMessage: OnReceiveMessageFnType = (
     peerId: string,
     msg: PeerMessage
   ) => {
-    message.info(`receiving file ${msg.type} from ${peerId}`);
+    Logger.info(`receiving file ${msg.type} from ${peerId}`);
     if (isInterestedInMessage(peerType, msg.type)) {
       onReceiveMessage(peerId, msg);
     }
   };
 
-  const sendToConnection = (
-    peerId: string,
-    dataType: PeerMessageType,
-    data?: IData
-  ) => {
-    message.debug(`START: sendToConnection to ${peerId} type ${dataType}`);
-    return peerConn.current
-      ?.sendMessageToConnection(peerId, { type: dataType, data })
-      .finally(() =>
-        message.debug(`END: sendToConnection to ${peerId} type ${dataType}`)
-      );
-  };
+  const _listenToPeerEvents = (peerId: string, conn: DataConnection) =>
+    conn
+      .on("open", () => {
+        Logger.info("Connect to: " + peerId);
+        setPeers((c) => ImmutableRecord.add(c, peerId, conn));
+      })
+      .on("data", (receivedData: any) => {
+        Logger.info("Receiving data from " + peerId);
+        _onReceiveMessage(peerId, receivedData as PeerMessage);
+      })
+      .on("close", () => {
+        Logger.info("Connection closed: " + peerId);
+        setPeers((c) => ImmutableRecord.remove(c, peerId));
+      })
+      .on("error", (err: Error) => {
+        Logger.error("connectPeer-error", err);
+      });
 
-  const startPeerSession = async () => {
-    try {
-      const newConn = new PeerConnection((peers: string[]) => setPeers(peers));
-      await newConn.startSession(_onReceiveMessage);
-      peerConn.current = newConn;
-    } catch (err) {
-      message.error("Error starting session:", err);
-    }
-  };
+  const startSession = () =>
+    new Promise<string>((resolve, reject) => {
+      myPeer
+        .on("open", (id: string) => {
+          Logger.info(`connection open ${id}`);
+          resolve(id);
+        })
+        .on("connection", (conn: DataConnection) => {
+          const connId = conn.peer;
+          Logger.info("Incoming connection:", connId);
+          setPeers((c) => ImmutableRecord.add(c, connId, conn));
+          _listenToPeerEvents(connId, conn);
+        })
+        .on("error", (err: Error) => {
+          Logger.error("startPeerSession-error:", err);
+          // alert(`Error: ${err.message}`); // TODO
+          reject(err);
+        });
+    });
 
-  const connectToNewPeer = async (peerId: string) => {
-    if (peerConn.current) {
-      message.info(`connecting with new peer ${peerId}`);
-      await peerConn.current.connectToNewPeer(peerId, _onReceiveMessage);
-      message.info(`connected with new peer ${peerId}`);
-    } else {
-      message.error("start session first");
-      throw Error("start session first");
-    }
-  };
+  const connectToNewPeer = (peerId: string) =>
+    new Promise<void>((resolve, reject) => {
+      if (peers[peerId]) {
+        return reject(new Error("Connection existed"));
+      }
+      const conn = myPeer.connect(peerId, { reliable: true });
+      if (!conn) return reject(new Error("Connection can't be established"));
+      _listenToPeerEvents(peerId, conn);
+    });
+
+  const sendMessageToPeer = (id: string, msg: PeerMessage): Promise<void> =>
+    new Promise((resolve, reject) => {
+      if (!peers[id]) {
+        reject(new Error("Connection didn't exist"));
+      }
+      try {
+        const conn = peers[id];
+        if (conn) conn.send(msg);
+        resolve();
+      } catch (err) {
+        Logger.error("sendConnection", err);
+        reject(err);
+      }
+    });
 
   return {
-    peerConn,
-    peers,
-    startPeerSession,
+    myPeer,
+    peers: Object.keys(peers).map((p) => peers[p].peer),
+    startSession,
     connectToNewPeer,
-    sendToConnection,
+    sendMessageToPeer,
   };
 };
+
+const genId = () => `${CryptoLib.uuid(true)}-${CryptoLib.random(8)}`;

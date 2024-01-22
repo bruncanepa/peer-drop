@@ -1,8 +1,6 @@
 import Peer, { DataConnection } from "peerjs";
 import { CryptoLib } from "./crypto";
-import { Message } from "utils/message";
-
-const logger = new Message();
+import { Logger } from "utils/logger";
 
 export enum PeerMessageType {
   REQ_FILES_LIST = "REQ_FILES_LIST",
@@ -65,18 +63,18 @@ export class PeerConnection {
     new Promise<string>((resolve, reject) => {
       this.peer
         .on("open", (id: string) => {
-          logger.info(`connection open ${id}`);
+          Logger.info(`connection open ${id}`);
           resolve(id);
         })
         .on("connection", (conn: DataConnection) => {
           const connId = conn.peer;
-          logger.info("Incoming connection:", connId);
+          Logger.info("Incoming connection:", connId);
           this.connections.set(connId, conn);
           this.notify(Array.from(this.connections.keys()));
           this.listenToPeerEvents(connId, conn, onReceiveData);
         })
         .on("error", (err: Error) => {
-          logger.error("startPeerSession-error:", err);
+          Logger.error("startPeerSession-error:", err);
           // alert(`Error: ${err.message}`); // TODO
           reject(err);
         });
@@ -102,7 +100,7 @@ export class PeerConnection {
         if (conn) conn.send(data);
         resolve();
       } catch (err) {
-        logger.error("sendConnection", err);
+        Logger.error("sendConnection", err);
         reject(err);
       }
     });
@@ -114,21 +112,21 @@ export class PeerConnection {
   ) =>
     conn
       .on("open", () => {
-        logger.info("Connect to: " + peerId);
+        Logger.info("Connect to: " + peerId);
         this.connections.set(peerId, conn);
         this.notify(Array.from(this.connections.keys()));
       })
       .on("data", (receivedData: any) => {
-        logger.info("Receiving data from " + peerId);
+        Logger.info("Receiving data from " + peerId);
         onReceiveData(peerId, receivedData as PeerMessage);
       })
       .on("close", () => {
-        logger.info("Connection closed: " + peerId);
+        Logger.info("Connection closed: " + peerId);
         this.connections.delete(peerId);
         this.notify(Object.keys(this.connections));
       })
       .on("error", (err: Error) => {
-        logger.error("connectPeer-error", err);
+        Logger.error("connectPeer-error", err);
       });
 
   private genId = () => `${CryptoLib.uuid(true)}-${CryptoLib.random(8)}`;
