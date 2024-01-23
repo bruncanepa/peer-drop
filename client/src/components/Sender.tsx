@@ -32,7 +32,7 @@ const Sender: FC<SenderProps> = () => {
           marginLeft: "2%",
         }}
       >
-        <input type="file" multiple onChange={onSelectFiles} />
+        <input type="file" onChange={onSelectFiles} />
 
         <Files files={files} onRemoveFile={onRemoveFile} />
 

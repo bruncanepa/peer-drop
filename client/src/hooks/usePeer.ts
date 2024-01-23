@@ -80,6 +80,9 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
           resolve(id);
         })
         .on("connection", (conn: DataConnection) => {
+          if (Object.keys(peers.current).length) {
+            throw Error("receiver only allows 1 connection");
+          }
           const connId = conn.peer;
           peers.current = ImmutableRecord.add(peers.current, connId, conn);
           _listenToPeerEvents(connId, conn);
@@ -103,16 +106,11 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
     });
 
   const sendMessageToPeer = (peerId: string, msg: PeerMessage): Promise<void> =>
-    new Promise((resolve, reject) => {
-      if (!peers.current[peerId]) {
-        reject(new Error("Connection didn't exist"));
-      }
+    new Promise(async (resolve, reject) => {
       try {
         const conn = peers.current[peerId];
-        if (conn) {
-          conn.send(msg);
-          addActivityLog({ peerId, type: msg.type, data: msg.data });
-        }
+        await conn.send(msg, true);
+        addActivityLog({ peerId, type: msg.type, data: msg.data });
         resolve();
       } catch (err) {
         addActivityLog({
