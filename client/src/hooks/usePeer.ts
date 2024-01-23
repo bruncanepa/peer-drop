@@ -131,5 +131,6 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
     startSession,
     connectToNewPeer,
     sendMessageToPeer,
+    addActivityLog,
   };
 };

@@ -13,7 +13,8 @@ export type ActivityLogType =
   | "CONNECTION_CLOSE"
   | "CREATE_FILE_SESSION_REQUESTED"
   | "CREATE_FILE_SESSION_OK"
-  | "CREATE_FILE_SESSION_ERROR";
+  | "CREATE_FILE_SESSION_ERROR"
+  | "COPY_SHARE_URL";
 
 export interface ActivityLog {
   date?: Date;

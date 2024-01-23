@@ -8,7 +8,6 @@ import {
   PeerMessage,
   PeerMessageType,
 } from "libs/peer";
-import { FetchLogger, Logger } from "utils/logger";
 import { downloadFile } from "utils/file";
 
 interface usePeerReceiverProps {
@@ -42,10 +41,11 @@ export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
   const {
     myId,
     peers,
+    activityLogs,
     sendMessageToPeer,
     startSession,
     connectToNewPeer,
-    activityLogs,
+    addActivityLog,
   } = usePeer({
     peerType: "RECEIVER",
     onReceiveMessage,
@@ -69,12 +69,14 @@ export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
 
   const getFileSession = async () => {
     try {
+      addActivityLog({ type: "CREATE_FILE_SESSION_REQUESTED" });
       const fileSessionRes: FileSessionShared = await fetch(
         `http://localhost:8081/files/sessions/${sharedId}`,
         {
           headers: { "Content-Type": "application/json" },
         }
       ).then((p) => p.json());
+      addActivityLog({ type: "CREATE_FILE_SESSION_OK" });
 
       setFilSession(fileSessionRes);
       await connectToNewPeer(fileSessionRes.ownerId);
@@ -82,7 +84,7 @@ export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
     } catch (err) {
       const error = err as Error;
       setError(error);
-      Logger.error("session not found", err);
+      addActivityLog({ type: "CREATE_FILE_SESSION_ERROR" });
     }
   };
 
@@ -92,6 +94,10 @@ export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
       type: PeerMessageType.FILES_DOWNLOAD_REQ,
     });
 
+  const onRemoveFile = (file: DataFileListItem) => {
+    setFiles((fs) => fs.filter((f) => f.name !== file.name));
+  };
+
   return {
     myId,
     fileSession,
@@ -100,5 +106,6 @@ export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
     error,
     activityLogs,
     downloadFiles,
+    onRemoveFile,
   };
 };

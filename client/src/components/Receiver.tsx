@@ -3,6 +3,7 @@ import { Peers } from "./Peers";
 import { usePeerReceiver } from "hooks/usePeerReceiver";
 import { ActivityLog } from "./ActivityLog";
 import { Box } from "./common/Box";
+import { Files } from "./Files";
 
 interface ReceiverProps {
   sharedId: string;
@@ -17,6 +18,7 @@ const Receiver: FC<ReceiverProps> = ({ sharedId }) => {
     myId,
     activityLogs,
     downloadFiles,
+    onRemoveFile,
   } = usePeerReceiver({ sharedId });
 
   if (error) return <span>Error {error.message}</span>;
@@ -32,11 +34,8 @@ const Receiver: FC<ReceiverProps> = ({ sharedId }) => {
 
         {files.length ? (
           <>
-            <ol>
-              {files.map((file) => (
-                <li key={file.name}>{file.name}</li>
-              ))}
-            </ol>
+            <Files files={files} onRemoveFile={onRemoveFile} />
+
             <button onClick={downloadFiles}>Download</button>
           </>
         ) : (

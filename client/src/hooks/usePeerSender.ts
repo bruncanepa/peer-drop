@@ -45,8 +45,14 @@ export const usePeerSender = () => {
     }
   };
 
-  const { myId, peers, sendMessageToPeer, startSession, activityLogs } =
-    usePeer({ peerType: "SENDER", onReceiveMessage });
+  const {
+    myId,
+    peers,
+    activityLogs,
+    sendMessageToPeer,
+    startSession,
+    addActivityLog,
+  } = usePeer({ peerType: "SENDER", onReceiveMessage });
 
   const createFileSession = async () => {
     try {
@@ -76,7 +82,7 @@ export const usePeerSender = () => {
     fileSession &&
     navigator.clipboard
       .writeText(`${window.location.origin}/${fileSession.id}`)
-      .then(() => Logger.info("Copied URL:", fileSession.id));
+      .then(() => addActivityLog({ type: "COPY_SHARE_URL" }));
 
   const onRemoveFile = (file: DataFileListItem) => {
     filesRef.current = filesRef.current.filter((f) => f.name !== file.name);
