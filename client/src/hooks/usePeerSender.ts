@@ -1,68 +1,62 @@
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useRef, useState } from "react";
 import { usePeer } from "./usePeer";
 import { FileSession } from "dto/fileSession";
 import {
   DataFile,
   DataFileList,
+  DataFileListItem,
   PeerMessage,
   PeerMessageType,
 } from "libs/peer";
 import { Logger } from "utils/logger";
 
 export const usePeerSender = () => {
-  const [files, setFiles] = useState<File[]>([]);
+  const filesRef = useRef<File[]>([]);
   const [fileSession, setFilSession] = useState<FileSession>();
   const [sendingFiles, setSendingFiles] = useState(false);
 
   const onReceiveMessage = (peerId: string, msg: PeerMessage) => {
     switch (msg.type) {
-      case PeerMessageType.REQ_FILES_DOWNLOAD: {
+      case PeerMessageType.FILES_DOWNLOAD_REQ: {
         setSendingFiles(true);
-        const file = files[0];
+        const file = filesRef.current[0];
         return sendMessageToPeer(peerId, {
-          type: PeerMessageType.RES_FILES_DOWNLOAD,
+          type: PeerMessageType.FILES_DOWNLOAD_RES,
           data: {
             blob: new Blob([file], { type: file.type }),
             name: file.name,
             type: file.type,
             size: file.size,
           } as DataFile,
-        })
-          .then(() => Logger.info(`Send file ${file.name} successfully`))
-          .catch((err) => Logger.error(`Error sending file ${file.name}:`, err))
-          .finally(() => setSendingFiles(false));
+        }).finally(() => setSendingFiles(false));
       }
-      case PeerMessageType.REQ_FILES_LIST: {
+      case PeerMessageType.FILES_LIST_REQ: {
         return sendMessageToPeer(peerId, {
-          type: PeerMessageType.RES_FILES_LIST,
+          type: PeerMessageType.FILES_LIST_RES,
           data: {
-            items: files.map((f) => ({
+            items: filesRef.current.map((f) => ({
               name: f.name,
               size: f.size,
               type: f.type,
             })),
           } as DataFileList,
-        })
-          .then(() => Logger.info("Send file list successfully"))
-          .catch((err) => Logger.error(`Error sending file list:`, err));
+        });
       }
     }
   };
 
-  const { myPeer, peers, sendMessageToPeer, startSession } = usePeer({
-    peerType: "SENDER",
-    onReceiveMessage,
-  });
+  const { myId, peers, sendMessageToPeer, startSession, activityLogs } =
+    usePeer({ peerType: "SENDER", onReceiveMessage });
 
   const createFileSession = async () => {
     try {
-      await startSession();
+      const userId = await startSession();
 
       const fileSessionRes: FileSession = await fetch(
         "http://localhost:8081/files/sessions",
         {
           method: "POST",
-          body: JSON.stringify({ userId: myPeer.id }),
+          body: JSON.stringify({ userId }),
           headers: { "Content-Type": "application/json" },
         }
       ).then((p) => p.json());
@@ -74,7 +68,7 @@ export const usePeerSender = () => {
   };
 
   const onSelectFiles = (event: ChangeEvent<HTMLInputElement>) => {
-    setFiles(Array.from(event.target.files || []));
+    filesRef.current = Array.from(event.target.files || []);
     createFileSession();
   };
 
@@ -84,16 +78,17 @@ export const usePeerSender = () => {
       .writeText(`${window.location.origin}/${fileSession.id}`)
       .then(() => Logger.info("Copied URL:", fileSession.id));
 
-  const onRemoveFile = (file: File) => {
-    setFiles((fs) => fs.filter((f) => f.name !== file.name));
+  const onRemoveFile = (file: DataFileListItem) => {
+    filesRef.current = filesRef.current.filter((f) => f.name !== file.name);
   };
 
   return {
-    peerId: myPeer.id,
+    myId,
     peers,
-    files,
+    files: filesRef.current,
     fileSession,
     sendingFiles,
+    activityLogs,
     startSession,
     onSelectFiles,
     copyShareLink,

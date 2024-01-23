@@ -3,10 +3,10 @@ import { CryptoLib } from "./crypto";
 import { Logger } from "utils/logger";
 
 export enum PeerMessageType {
-  REQ_FILES_LIST = "REQ_FILES_LIST",
-  RES_FILES_LIST = "RES_FILES_LIST",
-  REQ_FILES_DOWNLOAD = "REQ_FILES_DOWNLOAD",
-  RES_FILES_DOWNLOAD = "RES_FILES_DOWNLOAD",
+  FILES_LIST_REQ = "FILES_LIST_REQ",
+  FILES_LIST_RES = "FILES_LIST_RES",
+  FILES_DOWNLOAD_REQ = "FILES_DOWNLOAD_REQ",
+  FILES_DOWNLOAD_RES = "FILES_DOWNLOAD_RES",
 }
 
 export interface IData {}
@@ -18,10 +18,10 @@ export interface DataFile extends IData {
   size: number;
 }
 
-export type DataFileListeItem = Omit<DataFile, "blob">;
+export type DataFileListItem = Omit<DataFile, "blob">;
 
 export interface DataFileList extends IData {
-  items: DataFileListeItem[];
+  items: DataFileListItem[];
 }
 
 export interface PeerMessage {

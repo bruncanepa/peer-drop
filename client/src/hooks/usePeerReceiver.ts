@@ -4,7 +4,7 @@ import { FileSessionShared } from "dto/fileSession";
 import {
   DataFile,
   DataFileList,
-  DataFileListeItem,
+  DataFileListItem,
   PeerMessage,
   PeerMessageType,
 } from "libs/peer";
@@ -16,19 +16,19 @@ interface usePeerReceiverProps {
 }
 
 export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
-  const [files, setFiles] = useState<DataFileListeItem[]>([]);
+  const [files, setFiles] = useState<DataFileListItem[]>([]);
   const [fileSession, setFilSession] = useState<FileSessionShared>();
   const [error, setError] = useState<Error>();
 
   const onReceiveMessage = (peerId: string, msg: PeerMessage) => {
     switch (msg.type) {
-      case PeerMessageType.RES_FILES_LIST: {
+      case PeerMessageType.FILES_LIST_RES: {
         const data = msg.data as DataFileList;
         setFiles(data.items);
-        return Logger.info(`Received file list from ${peerId} successfully`);
+        return;
       }
 
-      case PeerMessageType.RES_FILES_DOWNLOAD: {
+      case PeerMessageType.FILES_DOWNLOAD_RES: {
         const data = msg.data as DataFile;
         return downloadFile(
           data.blob as Blob,
@@ -39,11 +39,17 @@ export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
     }
   };
 
-  const { myPeer, peers, sendMessageToPeer, startSession, connectToNewPeer } =
-    usePeer({
-      peerType: "RECEIVER",
-      onReceiveMessage,
-    });
+  const {
+    myId,
+    peers,
+    sendMessageToPeer,
+    startSession,
+    connectToNewPeer,
+    activityLogs,
+  } = usePeer({
+    peerType: "RECEIVER",
+    onReceiveMessage,
+  });
 
   useEffect(() => {
     // load on first render only
@@ -52,15 +58,9 @@ export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
         await startSession();
         const fs = await getFileSession();
         if (fs) {
-          const log = new FetchLogger(
-            `Send message ${PeerMessageType.REQ_FILES_LIST} to ${fs.ownerId}`
-          );
-          log.start();
           sendMessageToPeer(fs.ownerId, {
-            type: PeerMessageType.REQ_FILES_LIST,
-          })
-            .then(log.success)
-            .catch(log.error);
+            type: PeerMessageType.FILES_LIST_REQ,
+          });
         }
       }
     })();
@@ -76,8 +76,8 @@ export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
         }
       ).then((p) => p.json());
 
-      await connectToNewPeer(fileSessionRes.ownerId);
       setFilSession(fileSessionRes);
+      await connectToNewPeer(fileSessionRes.ownerId);
       return fileSessionRes;
     } catch (err) {
       const error = err as Error;
@@ -89,15 +89,16 @@ export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
   const downloadFiles = () =>
     fileSession &&
     sendMessageToPeer(fileSession.ownerId, {
-      type: PeerMessageType.REQ_FILES_DOWNLOAD,
+      type: PeerMessageType.FILES_DOWNLOAD_REQ,
     });
 
   return {
+    myId,
     fileSession,
     files,
     peers,
     error,
+    activityLogs,
     downloadFiles,
-    peerId: myPeer.id,
   };
 };

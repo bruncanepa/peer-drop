@@ -8,11 +8,21 @@ const App: FC = () => {
 
   return (
     <div className="App" style={{ display: "flex", flexDirection: "column" }}>
-      {Boolean(sharedSessionIdParam) ? (
-        <Receiver sharedId={sharedSessionIdParam} />
-      ) : (
-        <Sender />
-      )}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-evenly",
+          width: "90%",
+          margin: "5%",
+        }}
+      >
+        {Boolean(sharedSessionIdParam) ? (
+          <Receiver sharedId={sharedSessionIdParam} />
+        ) : (
+          <Sender />
+        )}
+      </div>
     </div>
   );
 };

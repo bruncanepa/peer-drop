@@ -1,4 +1,5 @@
 import { FC } from "react";
+import { idToShortId } from "utils/id";
 
 interface PeersProps {
   items: string[];
@@ -11,7 +12,7 @@ export const Peers: FC<PeersProps> = ({ items }) => {
       {items.length ? (
         <ol>
           {items.map((peer) => (
-            <li key={peer}>{peer}</li>
+            <li key={peer}>{idToShortId(peer)}</li>
           ))}
         </ol>
       ) : (
