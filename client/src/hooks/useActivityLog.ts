@@ -14,7 +14,8 @@ export type ActivityLogType =
   | "CREATE_FILE_SESSION_REQUESTED"
   | "CREATE_FILE_SESSION_OK"
   | "CREATE_FILE_SESSION_ERROR"
-  | "COPY_SHARE_URL";
+  | "COPY_SHARE_URL"
+  | "DISCONNECTED_FROM_SERVER";
 
 export interface ActivityLog {
   date?: Date;

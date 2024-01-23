@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import Peer, { DataConnection } from "peerjs";
+import Peer, { DataConnection, PeerError } from "peerjs";
 import { PeerMessage, PeerMessageType } from "libs/peer";
 import { ImmutableRecord } from "utils/record";
 import { useActivityLogs } from "./useActivityLog";
@@ -87,9 +87,13 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
           peers.current = ImmutableRecord.add(peers.current, connId, conn);
           _listenToPeerEvents(connId, conn);
         })
-        .on("error", (err: Error) => {
-          addActivityLog({ type: "CREATE_SESSION_ERROR" });
-          reject(err);
+        .on("error", (err: PeerError<string>) => {
+          if (err.type === "network") {
+            addActivityLog({ type: "DISCONNECTED_FROM_SERVER", data: err });
+          } else {
+            addActivityLog({ type: "CREATE_SESSION_ERROR", data: err });
+            reject(err);
+          }
         });
     });
 
