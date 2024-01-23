@@ -37,10 +37,10 @@ const Sender: FC<SenderProps> = () => {
         <Files files={files} onRemoveFile={onRemoveFile} />
 
         {files?.length && (
-          <button onClick={copyShareLink}>Copy link to share</button>
+          <button onClick={copyShareLink}>Copy room's link to share</button>
         )}
 
-        <Peers items={peers} />
+        {!!peers.length && <Peers items={peers} />}
 
         {sendingFiles && <span>Sending files...</span>}
       </Box>
