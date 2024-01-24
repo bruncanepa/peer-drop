@@ -4,18 +4,24 @@ import { ImmutableArray } from "utils/array";
 
 export type ActivityLogType =
   | PeerMessageType
-  | "CREATE_SESSION_REQUESTED"
-  | "CREATE_SESSION_OK"
-  | "CREATE_SESSION_ERROR"
-  | "NEW_CONNECTION_REQUESTED"
-  | "NEW_CONNECTION_OK"
-  | "NEW_CONNECTION_ERROR"
-  | "CONNECTION_CLOSE"
-  | "CREATE_ROOM_REQUESTED"
-  | "CREATE_ROOM_OK"
-  | "CREATE_ROOM_ERROR"
-  | "COPY_SHARE_URL"
-  | "DISCONNECTED_FROM_SERVER";
+  | "CREATE_SESSION_REQUESTED" // Both
+  | "CREATE_SESSION_OK" // Both
+  | "CREATE_SESSION_ERROR" // Both
+  | "LISTEN_CONNECTION_REQUESTED" // Both
+  | "LISTEN_CONNECTION_OK" // Both
+  | "LISTEN_CONNECTION_ERROR" // Both
+  | "NEW_CONNECTION_REQUESTED" // Receiver
+  | "NEW_CONNECTION_OK" // Receiver
+  | "NEW_CONNECTION_ERROR" // Receiver
+  | "CONNECTION_CLOSE" // Both
+  | "CREATE_ROOM_REQUESTED" // Sender
+  | "CREATE_ROOM_OK" // Sender
+  | "CREATE_ROOM_ERROR" // Sender
+  | "GET_ROOM_REQUESTED" // Receiver
+  | "GET_ROOM_OK" // Receiver
+  | "GET_ROOM_ERROR" // Receiver
+  | "COPY_SHARE_URL" // Sender
+  | "DISCONNECTED_FROM_SERVER"; // Both;
 
 export interface ActivityLog {
   date?: Date;

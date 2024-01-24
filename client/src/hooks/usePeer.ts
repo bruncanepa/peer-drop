@@ -53,12 +53,12 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
     conn: DataConnection,
     callback?: (err?: Error) => any
   ) => {
-    addActivityLog({ peerId, type: "NEW_CONNECTION_REQUESTED" });
+    addActivityLog({ peerId, type: "LISTEN_CONNECTION_REQUESTED" });
     conn
       .on("open", () => {
         peersRef.current = ImmutableRecord.add(peersRef.current, peerId, conn);
         if (callback) callback();
-        addActivityLog({ peerId, type: "NEW_CONNECTION_OK" });
+        addActivityLog({ peerId, type: "LISTEN_CONNECTION_OK" });
       })
       .on("data", (receivedData: any) => {
         _onReceiveMessage(peerId, receivedData as PeerMessage);
@@ -69,7 +69,7 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
       })
       .on("error", (err: PeerError<string>) => {
         if (callback) callback(err);
-        addActivityLog({ peerId, type: "NEW_CONNECTION_ERROR", data: err });
+        addActivityLog({ peerId, type: "LISTEN_CONNECTION_ERROR", data: err });
       });
   };
 
@@ -116,27 +116,22 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
 
   const connectToNewPeer = (peerId: string) =>
     new Promise<void>((resolve, reject) => {
-      addActivityLog({ type: "CREATE_ROOM_REQUESTED", peerId });
+      addActivityLog({ type: "NEW_CONNECTION_OK", peerId });
       if (peersRef.current[peerId]) {
         const errMsg = "Connection existed";
-        addActivityLog({ peerId, type: "CREATE_ROOM_ERROR", data: errMsg });
+        addActivityLog({ peerId, type: "NEW_CONNECTION_ERROR", data: errMsg });
         return reject(new Error(errMsg));
       }
       const conn = serverPeerRef.current?.connect(peerId, { reliable: true });
       if (!conn) {
         const errMsg = "Connection can't be established";
-        addActivityLog({ peerId, type: "CREATE_ROOM_ERROR", data: errMsg });
+        addActivityLog({ peerId, type: "NEW_CONNECTION_ERROR", data: errMsg });
         return reject(new Error(errMsg));
       }
-      _listenToPeerEvents(peerId, conn, (err?: Error) => {
-        if (err) {
-          addActivityLog({ peerId, type: "CREATE_ROOM_ERROR", data: err });
-          reject(err);
-        } else {
-          addActivityLog({ peerId, type: "CREATE_ROOM_OK" });
-          resolve();
-        }
-      });
+      addActivityLog({ peerId, type: "NEW_CONNECTION_OK" });
+      _listenToPeerEvents(peerId, conn, (err?: Error) =>
+        err ? reject(err) : resolve()
+      );
     });
 
   const sendMessageToPeer = (peerId: string, msg: PeerMessage): Promise<void> =>

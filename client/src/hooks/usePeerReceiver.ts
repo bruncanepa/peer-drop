@@ -78,7 +78,7 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
         SeverMessageDataGetRoomReq,
         SeverMessageDataGetRoomRes
       >(
-        "CREATE_ROOM_REQUESTED",
+        "GET_ROOM_REQUESTED",
         { type: "GET_ROOM", data: { roomId } },
         (message: ServerMessage<SeverMessageDataGetRoomRes>) => {
           if (message.error) return reject(new Error(message.error));
