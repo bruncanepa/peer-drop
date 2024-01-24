@@ -1,22 +1,25 @@
 import { useEffect, useState } from "react";
 import { usePeer } from "./usePeer";
-import { FileSessionShared } from "dto/fileSession";
+import { RoomShared } from "dto/room";
 import {
   DataFile,
   DataFileList,
   DataFileListItem,
   PeerMessage,
   PeerMessageType,
+  ServerMessage,
+  SeverMessageDataGetRoomReq,
+  SeverMessageDataGetRoomRes,
 } from "libs/peer";
 import { downloadFile } from "utils/file";
 
 interface usePeerReceiverProps {
-  sharedId: string;
+  roomId: string;
 }
 
-export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
+export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
   const [files, setFiles] = useState<DataFileListItem[]>([]);
-  const [fileSession, setFilSession] = useState<FileSessionShared>();
+  const [room, setRoom] = useState<RoomShared>();
   const [error, setError] = useState<Error>();
 
   const onReceiveMessage = (peerId: string, msg: PeerMessage) => {
@@ -45,7 +48,7 @@ export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
     sendMessageToPeer,
     startSession,
     connectToNewPeer,
-    addActivityLog,
+    sendMessageToServer,
   } = usePeer({
     peerType: "RECEIVER",
     onReceiveMessage,
@@ -54,11 +57,11 @@ export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
   useEffect(() => {
     // load on first render only
     (async () => {
-      if (sharedId) {
+      if (roomId) {
         await startSession();
-        const fs = await getFileSession();
-        if (fs) {
-          sendMessageToPeer(fs.ownerId, {
+        const room = await getRoom();
+        if (room) {
+          sendMessageToPeer(room.ownerId, {
             type: PeerMessageType.FILES_LIST_REQ,
           });
         }
@@ -67,30 +70,32 @@ export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const getFileSession = async () => {
-    try {
-      addActivityLog({ type: "CREATE_FILE_SESSION_REQUESTED" });
-      const fileSessionRes: FileSessionShared = await fetch(
-        `http://localhost:8081/files/sessions/${sharedId}`,
-        {
-          headers: { "Content-Type": "application/json" },
+  const getRoom = (): Promise<RoomShared> => {
+    return new Promise((resolve, reject) => {
+      sendMessageToServer<
+        SeverMessageDataGetRoomReq,
+        SeverMessageDataGetRoomRes
+      >(
+        "CREATE_ROOM_REQUESTED",
+        { type: "GET_ROOM", data: { roomId } },
+        (message: ServerMessage<SeverMessageDataGetRoomRes>) => {
+          const roomSession = message.data;
+          setRoom(roomSession);
+          connectToNewPeer(roomSession.ownerId)
+            .then(() => resolve(roomSession))
+            .catch((err) => {
+              const error = err as Error;
+              setError(error);
+              reject(err);
+            });
         }
-      ).then((p) => p.json());
-      addActivityLog({ type: "CREATE_FILE_SESSION_OK" });
-
-      setFilSession(fileSessionRes);
-      await connectToNewPeer(fileSessionRes.ownerId);
-      return fileSessionRes;
-    } catch (err) {
-      const error = err as Error;
-      setError(error);
-      addActivityLog({ type: "CREATE_FILE_SESSION_ERROR" });
-    }
+      );
+    });
   };
 
   const downloadFiles = () =>
-    fileSession &&
-    sendMessageToPeer(fileSession.ownerId, {
+    room &&
+    sendMessageToPeer(room.ownerId, {
       type: PeerMessageType.FILES_DOWNLOAD_REQ,
     });
 
@@ -100,7 +105,7 @@ export const usePeerReceiver = ({ sharedId }: usePeerReceiverProps) => {
 
   return {
     myId,
-    fileSession,
+    room,
     files,
     peers,
     error,

@@ -9,21 +9,21 @@ interface ReceiverProps {
   sharedId: string;
 }
 
-const Receiver: FC<ReceiverProps> = ({ sharedId }) => {
+const Receiver: FC<ReceiverProps> = ({ sharedId: roomId }) => {
   const {
     files,
-    fileSession,
+    room,
     peers,
     error,
     myId,
     activityLogs,
     downloadFiles,
     onRemoveFile,
-  } = usePeerReceiver({ sharedId });
+  } = usePeerReceiver({ roomId });
 
   if (error) return <span>Error {error.message}</span>;
 
-  if (!Boolean(fileSession)) return <span>Loading...</span>;
+  if (!Boolean(room)) return <span>Loading...</span>;
 
   return (
     <>

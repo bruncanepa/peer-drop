@@ -1,7 +1,7 @@
 import { ErrorMessage } from "./error";
 import { CryptoLib } from "./lib/crypto";
 
-export type FileSession = {
+export type Room = {
   id: string;
   ownerId: string;
   date: Date;
@@ -10,23 +10,20 @@ export type FileSession = {
   receipt: string;
 };
 
-export type FileSessionShared = Omit<
-  FileSession,
-  "receipt" | "pendingDownloads"
->;
+export type RoomShared = Omit<Room, "receipt" | "pendingDownloads">;
 
-export class FileSessionManager {
-  private sessions: Map<string, FileSession>;
+export class RoomManager {
+  private rooms: Map<string, Room>;
   constructor() {
-    this.sessions = new Map();
+    this.rooms = new Map();
   }
 
-  add = (ownerId: string, downloadTimes = 1): FileSession => {
+  add = (ownerId: string, downloadTimes = 1): Room => {
     const date = new Date();
     const expires = new Date(date);
     expires.setDate(date.getDate() + 1); // expires in 1 day
 
-    const session: FileSession = {
+    const session: Room = {
       id: CryptoLib.random(24),
       ownerId,
       date,
@@ -35,21 +32,21 @@ export class FileSessionManager {
       receipt: CryptoLib.random(50),
     };
 
-    this.sessions.set(session.id, session);
+    this.rooms.set(session.id, session);
 
     return session;
   };
 
-  get = (sessionId: string): FileSessionShared => {
+  get = (sessionId: string): RoomShared => {
     const session = this.getThrow(sessionId);
-    return this.sessionToSessionShared(session);
+    return this.roomToRoomShared(session);
   };
 
-  downloaded = (sessionId: string, receipt: string): FileSession => {
+  downloaded = (sessionId: string, receipt: string): Room => {
     const session = this.getThrow(sessionId);
     if (session.receipt === receipt) {
       session.pendingDownloads -= 1;
-      if (session.pendingDownloads === 0) this.sessions.delete(sessionId);
+      if (session.pendingDownloads === 0) this.rooms.delete(sessionId);
       return session;
     }
     console.log(
@@ -58,16 +55,14 @@ export class FileSessionManager {
     throw Error(ErrorMessage.NOT_FOUND.key);
   };
 
-  private getThrow = (sessionId: string): FileSession => {
-    const session = this.sessions.get(sessionId);
+  private getThrow = (sessionId: string): Room => {
+    const session = this.rooms.get(sessionId);
     if (session) return session;
     throw Error(ErrorMessage.NOT_FOUND.key);
   };
 
-  private sessionToSessionShared = (
-    session: FileSession
-  ): FileSessionShared => {
-    const shared: FileSessionShared = {
+  private roomToRoomShared = (session: Room): RoomShared => {
+    const shared: RoomShared = {
       date: new Date(session.date),
       expires: new Date(session.expires),
       id: session.id,

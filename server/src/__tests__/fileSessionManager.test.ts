@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, test } from "@jest/globals";
-import { FileSessionManager } from "../fileSessionManager";
+import { RoomManager } from "../fileSessionManager";
 import { ErrorMessage } from "../error";
 
 describe("fileSessionManager", () => {
-  let manager = new FileSessionManager();
+  let manager = new RoomManager();
   afterEach(() => {
-    manager = new FileSessionManager();
+    manager = new RoomManager();
   });
 
   test("add + get", () => {

@@ -4,8 +4,12 @@ import * as express from "express";
 import helmet from "helmet";
 import * as compression from "compression";
 import * as cors from "cors";
-import { ExpressPeerServer } from "peer";
-import { FileSessionManager } from "./src/fileSessionManager";
+import { ExpressPeerServer, IClient, IMessage, PeerServerEvents } from "peer";
+import {
+  Room,
+  RoomManager,
+  RoomShared,
+} from "./src/fileSessionManager";
 import { errorHandler } from "./src/middlewares/errorHandler";
 
 const app = express();
@@ -16,34 +20,104 @@ app.use((req, res, next) => {
   next();
 });
 
-const peerServer = ExpressPeerServer(server);
-peerServer.on("connection", (client) => {
+// Created ad "MessageType" from "peer" lib is undefined
+enum PeerMessageType {
+  ANSWER = "ANSWER",
+  CANDIDATE = "CANDIDATE",
+  ERROR = "ERROR",
+  HEARTBEAT = "HEARTBEAT",
+  ID_TAKEN = "ID_TAKEN",
+  LEAVE = "LEAVE",
+  OFFER = "OFFER",
+  OPEN = "OPEN",
+  PEER_DROP = "PEER_DROP",
+}
+
+/**  BEGIN SHARE WITH WEB  */
+type ServerMessageType = "CREATE_ROOM" | "GET_ROOM";
+
+interface ISeverMessageDataReq {}
+interface ISeverMessageDataRes {}
+
+interface SeverMessageGeneric extends ISeverMessageDataReq {}
+
+interface SeverMessageDataCreateRoomReq extends ISeverMessageDataReq {
+  userId: string;
+}
+
+interface SeverMessageDataCreateRoomRes
+  extends ISeverMessageDataRes,
+    Room {}
+
+interface SeverMessageDataGetRoomReq extends ISeverMessageDataReq {
+  roomId: string;
+}
+
+interface SeverMessageDataGetRoomRes
+  extends ISeverMessageDataRes,
+    RoomShared {}
+
+interface ServerMessage<T extends ISeverMessageDataReq> {
+  type: ServerMessageType;
+  data: T;
+}
+/**  END SHARE WITH WEB  */
+
+const peerServer: express.Express & PeerServerEvents =
+  ExpressPeerServer(server);
+peerServer.on("connection", (client: IClient) => {
   console.log("connection", client.getId());
 });
-peerServer.on("disconnect", (client) => {
+peerServer.on("disconnect", (client: IClient) => {
   console.log("disconnect", client.getId());
 });
-peerServer.on("message", (client, message) => {
-  if (message.type !== "HEARTBEAT") {
-    console.log(client.getId(), message);
+peerServer.on("message", (client: IClient, message: IMessage) => {
+  switch (message.type.toString()) {
+    case PeerMessageType.HEARTBEAT:
+      // do nothing
+      return;
+
+    case PeerMessageType.PEER_DROP: {
+      const payload =
+        message.payload as unknown as ServerMessage<SeverMessageGeneric>;
+
+      switch (payload.type) {
+        case "CREATE_ROOM": {
+          const { userId } = payload.data as SeverMessageDataCreateRoomReq;
+          const room = fileSessionManager.add(userId);
+          client.send({
+            data: room,
+            type: payload.type,
+          } as ServerMessage<SeverMessageDataCreateRoomRes>);
+          return;
+        }
+
+        case "GET_ROOM": {
+          const { roomId } = payload.data as SeverMessageDataGetRoomReq;
+          const room = fileSessionManager.get(roomId);
+          room
+            ? client.send({
+                data: room,
+                type: payload.type,
+              } as ServerMessage<SeverMessageDataGetRoomRes>)
+            : client.send(`room ${roomId} not found`);
+          return;
+        }
+
+        default:
+          return console.log("invalid PEER_DROP type", client.getId(), message);
+      }
+    }
+
+    default:
+      console.log(client.getId(), message);
+      return;
   }
 });
 app.use("/sockets", peerServer);
 
-const fileSessionManager = new FileSessionManager();
-app.use(cors("*"), helmet(), compression(), express.json());
-app.get("/files/sessions/:id", (req, res, next) => {
-  const fileSession = fileSessionManager.get(req.params.id);
-  fileSession ? res.send(fileSession) : res.status(404);
-});
-app.post("/files/sessions", (req, res) => {
-  const { userId, downloadTimes } = req.body as {
-    userId: string;
-    downloadTimes?: number;
-  };
-  const fileSession = fileSessionManager.add(userId, downloadTimes || 3);
-  res.send(fileSession);
-});
+const fileSessionManager = new RoomManager();
+app.use(cors("*"), helmet(), compression());
 app.use(errorHandler);
 
 server.listen(port, () => console.log(`listening on ${port}`));

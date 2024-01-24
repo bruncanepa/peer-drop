@@ -1,18 +1,21 @@
 import { ChangeEvent, useRef, useState } from "react";
 import { usePeer } from "./usePeer";
-import { FileSession } from "dto/fileSession";
+import { Room } from "dto/room";
 import {
   DataFile,
   DataFileList,
   DataFileListItem,
   PeerMessage,
   PeerMessageType,
+  ServerMessage,
+  SeverMessageDataCreateRoomReq,
+  SeverMessageDataCreateRoomRes,
 } from "libs/peer";
 import { Logger } from "utils/logger";
 
 export const usePeerSender = () => {
   const filesRef = useRef<File[]>([]);
-  const [fileSession, setFilSession] = useState<FileSession>();
+  const [room, setRoom] = useState<Room>();
   const [sendingFiles, setSendingFiles] = useState(false);
 
   const onReceiveMessage = (peerId: string, msg: PeerMessage) => {
@@ -52,22 +55,22 @@ export const usePeerSender = () => {
     sendMessageToPeer,
     startSession,
     addActivityLog,
+    sendMessageToServer,
   } = usePeer({ peerType: "SENDER", onReceiveMessage });
 
-  const createFileSession = async () => {
+  const createRoom = async () => {
     try {
       const userId = await startSession();
 
-      const fileSessionRes: FileSession = await fetch(
-        "http://localhost:8081/files/sessions",
-        {
-          method: "POST",
-          body: JSON.stringify({ userId }),
-          headers: { "Content-Type": "application/json" },
-        }
-      ).then((p) => p.json());
-
-      setFilSession(fileSessionRes);
+      sendMessageToServer<
+        SeverMessageDataCreateRoomReq,
+        SeverMessageDataCreateRoomRes
+      >(
+        "CREATE_ROOM_REQUESTED",
+        { type: "CREATE_ROOM", data: { userId } },
+        (message: ServerMessage<SeverMessageDataCreateRoomRes>) =>
+          setRoom(message.data)
+      );
     } catch (err) {
       Logger.error("couldn't create file session", err);
     }
@@ -75,13 +78,13 @@ export const usePeerSender = () => {
 
   const onSelectFiles = (event: ChangeEvent<HTMLInputElement>) => {
     filesRef.current = Array.from(event.target.files || []);
-    createFileSession();
+    createRoom();
   };
 
   const copyShareLink = () =>
-    fileSession &&
+    room &&
     navigator.clipboard
-      .writeText(`${window.location.origin}/${fileSession.id}`)
+      .writeText(`${window.location.origin}/${room.id}`)
       .then(() => addActivityLog({ type: "COPY_SHARE_URL" }));
 
   const onRemoveFile = (file: DataFileListItem) => {
@@ -92,7 +95,7 @@ export const usePeerSender = () => {
     myId,
     peers,
     files: filesRef.current,
-    fileSession,
+    fileSession: room,
     sendingFiles,
     activityLogs,
     startSession,
