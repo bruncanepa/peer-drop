@@ -5,6 +5,8 @@ import helmet from "helmet";
 import * as compression from "compression";
 import * as cors from "cors";
 import { ExpressPeerServer, IClient, IMessage, PeerServerEvents } from "peer";
+import rateLimit from "express-rate-limit";
+
 import { Room, RoomManager } from "./src/roomManager";
 import { errorHandler } from "./src/middlewares/errorHandler";
 
@@ -109,10 +111,17 @@ peerServer.on("message", (client: IClient, message: IMessage) => {
       return;
   }
 });
-app.use("/sockets", peerServer);
 
 const roomManager = new RoomManager();
-app.use(cors("*"), helmet(), compression());
+app.use(
+  cors("*"),
+  helmet(),
+  rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour window
+    max: 100, // limit each IP to 100 requests per windowMs
+  })
+);
+app.use("/sockets", peerServer);
 app.use(errorHandler);
 
 server.listen(port, () => console.log(`listening on ${port}`));
