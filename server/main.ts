@@ -62,7 +62,10 @@ peerServer.on("connection", (client: IClient) => {
   console.log("connection", client.getId());
 });
 peerServer.on("disconnect", (client: IClient) => {
-  console.log("disconnect", client.getId());
+  const ownerId = client.getId();
+  console.log(
+    `disconnect ${ownerId}. deleted ${roomManager.delete(ownerId)} rooms`
+  );
 });
 peerServer.on("message", (client: IClient, message: IMessage) => {
   switch (message.type.toString()) {
