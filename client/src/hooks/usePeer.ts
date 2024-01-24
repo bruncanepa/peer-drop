@@ -186,19 +186,20 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
     serverPeerRef.current?.socket?.on(
       SocketEventType.Message,
       (message: any) => {
-        // filter types
-        if (message.type === messageType) {
-          if (typeof message === "string") {
+        const msg = message as ServerMessage<T>;
+        if (msg.type === messageType) {
+          onServerEvent(msg);
+
+          if (msg.error) {
             addActivityLog({
               type: `${messageType}_ERROR` as ActivityLogType,
-              data: message,
+              data: msg.error,
             });
           } else {
             addActivityLog({
               type: `${messageType}_OK` as ActivityLogType,
-              // data: message, // TODO
+              // data: msg, // TODO
             });
-            onServerEvent(message as ServerMessage<T>);
           }
         }
       }

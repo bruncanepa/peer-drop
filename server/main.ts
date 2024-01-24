@@ -5,11 +5,7 @@ import helmet from "helmet";
 import * as compression from "compression";
 import * as cors from "cors";
 import { ExpressPeerServer, IClient, IMessage, PeerServerEvents } from "peer";
-import {
-  Room,
-  RoomManager,
-  RoomShared,
-} from "./src/fileSessionManager";
+import { Room, RoomManager } from "./src/roomManager";
 import { errorHandler } from "./src/middlewares/errorHandler";
 
 const app = express();
@@ -45,21 +41,18 @@ interface SeverMessageDataCreateRoomReq extends ISeverMessageDataReq {
   userId: string;
 }
 
-interface SeverMessageDataCreateRoomRes
-  extends ISeverMessageDataRes,
-    Room {}
+interface SeverMessageDataCreateRoomRes extends ISeverMessageDataRes, Room {}
 
 interface SeverMessageDataGetRoomReq extends ISeverMessageDataReq {
   roomId: string;
 }
 
-interface SeverMessageDataGetRoomRes
-  extends ISeverMessageDataRes,
-    RoomShared {}
+interface SeverMessageDataGetRoomRes extends ISeverMessageDataRes, Room {}
 
 interface ServerMessage<T extends ISeverMessageDataReq> {
   type: ServerMessageType;
   data: T;
+  error?: string;
 }
 /**  END SHARE WITH WEB  */
 
@@ -84,7 +77,7 @@ peerServer.on("message", (client: IClient, message: IMessage) => {
       switch (payload.type) {
         case "CREATE_ROOM": {
           const { userId } = payload.data as SeverMessageDataCreateRoomReq;
-          const room = fileSessionManager.add(userId);
+          const room = roomManager.add(userId);
           client.send({
             data: room,
             type: payload.type,
@@ -94,13 +87,12 @@ peerServer.on("message", (client: IClient, message: IMessage) => {
 
         case "GET_ROOM": {
           const { roomId } = payload.data as SeverMessageDataGetRoomReq;
-          const room = fileSessionManager.get(roomId);
-          room
-            ? client.send({
-                data: room,
-                type: payload.type,
-              } as ServerMessage<SeverMessageDataGetRoomRes>)
-            : client.send(`room ${roomId} not found`);
+          const room = roomManager.get(roomId);
+          client.send({
+            data: room,
+            type: payload.type,
+            error: room ? "" : `room not found`,
+          } as ServerMessage<SeverMessageDataGetRoomRes>);
           return;
         }
 
@@ -116,7 +108,7 @@ peerServer.on("message", (client: IClient, message: IMessage) => {
 });
 app.use("/sockets", peerServer);
 
-const fileSessionManager = new RoomManager();
+const roomManager = new RoomManager();
 app.use(cors("*"), helmet(), compression());
 app.use(errorHandler);
 

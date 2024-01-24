@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { usePeer } from "./usePeer";
-import { RoomShared } from "dto/room";
+import { Room } from "dto/room";
 import {
   DataFile,
   DataFileList,
@@ -19,7 +19,7 @@ interface usePeerReceiverProps {
 
 export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
   const [files, setFiles] = useState<DataFileListItem[]>([]);
-  const [room, setRoom] = useState<RoomShared>();
+  const [room, setRoom] = useState<Room>();
   const [error, setError] = useState<Error>();
 
   const onReceiveMessage = (peerId: string, msg: PeerMessage) => {
@@ -58,19 +58,21 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
     // load on first render only
     (async () => {
       if (roomId) {
-        await startSession();
-        const room = await getRoom();
-        if (room) {
+        try {
+          await startSession();
+          const room = await getRoom();
           sendMessageToPeer(room.ownerId, {
             type: PeerMessageType.FILES_LIST_REQ,
           });
+        } catch (err) {
+          setError(err as Error);
         }
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const getRoom = (): Promise<RoomShared> => {
+  const getRoom = (): Promise<Room> => {
     return new Promise((resolve, reject) => {
       sendMessageToServer<
         SeverMessageDataGetRoomReq,
@@ -79,10 +81,11 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
         "CREATE_ROOM_REQUESTED",
         { type: "GET_ROOM", data: { roomId } },
         (message: ServerMessage<SeverMessageDataGetRoomRes>) => {
-          const roomSession = message.data;
-          setRoom(roomSession);
-          connectToNewPeer(roomSession.ownerId)
-            .then(() => resolve(roomSession))
+          if (message.error) return reject(new Error(message.error));
+          const room = message.data;
+          setRoom(room);
+          connectToNewPeer(room.ownerId)
+            .then(() => resolve(room))
             .catch((err) => {
               const error = err as Error;
               setError(error);

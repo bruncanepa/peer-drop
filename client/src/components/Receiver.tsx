@@ -21,29 +21,31 @@ const Receiver: FC<ReceiverProps> = ({ sharedId: roomId }) => {
     onRemoveFile,
   } = usePeerReceiver({ roomId });
 
-  if (error) return <span>Error {error.message}</span>;
-
-  if (!Boolean(room)) return <span>Loading...</span>;
-
   return (
     <>
       <ActivityLog items={activityLogs} myId={myId} />
 
-      <Box style={{ marginLeft: "2%" }}>
-        <h3>Files to download</h3>
+      {Boolean(room) ? (
+        <Box style={{ marginLeft: "2%" }}>
+          <h3>Files to download</h3>
 
-        {files.length ? (
-          <>
-            <Files files={files} onRemoveFile={onRemoveFile} />
+          {files.length ? (
+            <>
+              <Files files={files} onRemoveFile={onRemoveFile} />
 
-            <button onClick={downloadFiles}>Download</button>
-          </>
-        ) : (
-          <span>No files</span>
-        )}
+              <button onClick={downloadFiles}>Download</button>
+            </>
+          ) : (
+            <span>No files</span>
+          )}
 
-        <Peers items={peers} />
-      </Box>
+          <Peers items={peers} />
+        </Box>
+      ) : (
+        !Boolean(error) && <span>Loading...</span>
+      )}
+
+      {Boolean(error) && <span>Error {error?.message}</span>}
     </>
   );
 };

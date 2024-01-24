@@ -6,7 +6,8 @@
   "scripts": {
     "start": "concurrently --kill-others \"npm run start:server\" \"npm run start:client\"",
     "start:client": "cd ./client && npm run start",
-    "start:server": "cd ./server && npm run start"
+    "start:server": "cd ./server && npm run start",
+    "test": "cd ./server && npm run test"
   },
   "author": "",
   "license": "ISC",

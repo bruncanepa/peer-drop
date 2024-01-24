@@ -1,4 +1,4 @@
-import { Room, RoomShared } from "dto/room";
+import { Room } from "dto/room";
 
 export enum PeerMessageType {
   FILES_LIST_REQ = "FILES_LIST_REQ",
@@ -29,11 +29,12 @@ export interface SeverMessageDataGetRoomReq extends ISeverMessageDataReq {
 
 export interface SeverMessageDataGetRoomRes
   extends ISeverMessageDataRes,
-    RoomShared {}
+    Room {}
 
 export interface ServerMessage<T extends ISeverMessageDataReq> {
   type: ServerMessageType;
   data: T;
+  error?: string;
 }
 /**  END SHARE WITH BACKEND  */
 
