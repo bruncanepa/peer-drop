@@ -1,7 +1,7 @@
-import { FC } from "react";
+import { FC, lazy, Suspense } from "react";
 import "./App.css";
-import Receiver from "components/Receiver";
-import Sender from "components/Sender";
+const Receiver = lazy(() => import("components/Receiver"));
+const Sender = lazy(() => import("components/Sender"));
 
 const App: FC = () => {
   const sharedSessionIdParam = window.location.pathname.replace("/", "");
@@ -17,11 +17,13 @@ const App: FC = () => {
           margin: "5%",
         }}
       >
-        {Boolean(sharedSessionIdParam) ? (
-          <Receiver sharedId={sharedSessionIdParam} />
-        ) : (
-          <Sender />
-        )}
+        <Suspense fallback={<div>Loading...</div>}>
+          {Boolean(sharedSessionIdParam) ? (
+            <Receiver sharedId={sharedSessionIdParam} />
+          ) : (
+            <Sender />
+          )}
+        </Suspense>
       </div>
     </div>
   );
