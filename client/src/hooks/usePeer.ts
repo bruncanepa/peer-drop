@@ -175,10 +175,9 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
 
   const listenToServerEvent = <T extends ISeverMessageDataRes>(
     messageType: ServerMessageType,
-    onServerEvent: (d: ServerMessage<T>) => any,
-    { once = true } = {} // TODO
+    onServerEvent: (d: ServerMessage<T>) => any
   ) => {
-    serverPeerRef.current?.socket?.on(
+    serverPeerRef.current?.socket?.once(
       SocketEventType.Message,
       (message: any) => {
         const msg = message as ServerMessage<T>;
