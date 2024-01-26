@@ -2,6 +2,13 @@ import { PeerMessageType } from "libs/peer";
 import { useState } from "react";
 import { ImmutableArray } from "utils/array";
 
+type ActivityLogTypeStatus = "OK" | "REQUESTED" | "ERROR";
+const validActivityLogTypeStatus: ActivityLogTypeStatus[] = [
+  "OK",
+  "REQUESTED",
+  "ERROR",
+];
+
 export type ActivityLogType =
   | PeerMessageType
   | "CREATE_SESSION_REQUESTED" // Both
@@ -22,6 +29,14 @@ export type ActivityLogType =
   | "GET_ROOM_ERROR" // Receiver
   | "COPY_SHARE_URL" // Sender
   | "DISCONNECTED_FROM_SERVER"; // Both;
+
+export const toActivityLogType = (
+  logType: string,
+  status: ActivityLogTypeStatus
+): ActivityLogType =>
+  validActivityLogTypeStatus.find((st) => logType.endsWith(st))
+    ? (logType as ActivityLogType)
+    : (`${logType}_${status}` as ActivityLogType);
 
 export interface ActivityLog {
   date?: Date;

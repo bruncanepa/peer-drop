@@ -62,7 +62,7 @@ export const usePeerSender = () => {
     try {
       const userId = await startSession();
 
-      sendMessageToServer<
+      await sendMessageToServer<
         SeverMessageDataCreateRoomReq,
         SeverMessageDataCreateRoomRes
       >(

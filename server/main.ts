@@ -71,10 +71,6 @@ peerServer.on("disconnect", (client: IClient) => {
 });
 peerServer.on("message", (client: IClient, message: IMessage) => {
   switch (message.type.toString()) {
-    case PeerMessageType.HEARTBEAT:
-      // do nothing
-      return;
-
     case PeerMessageType.PEER_DROP: {
       const payload =
         message.payload as unknown as ServerMessage<SeverMessageGeneric>;
@@ -83,22 +79,20 @@ peerServer.on("message", (client: IClient, message: IMessage) => {
         case "CREATE_ROOM": {
           const { userId } = payload.data as SeverMessageDataCreateRoomReq;
           const room = roomManager.add(userId);
-          client.send({
+          return client.send({
             data: room,
             type: payload.type,
           } as ServerMessage<SeverMessageDataCreateRoomRes>);
-          return;
         }
 
         case "GET_ROOM": {
           const { roomId } = payload.data as SeverMessageDataGetRoomReq;
           const room = roomManager.get(roomId);
-          client.send({
+          return client.send({
             data: room,
             type: payload.type,
             error: room ? "" : `room not found`,
           } as ServerMessage<SeverMessageDataGetRoomRes>);
-          return;
         }
 
         default:
@@ -107,7 +101,7 @@ peerServer.on("message", (client: IClient, message: IMessage) => {
     }
 
     default:
-      console.log(client.getId(), message);
+      // Do nothing
       return;
   }
 });

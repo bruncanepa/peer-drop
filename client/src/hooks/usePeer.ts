@@ -8,7 +8,11 @@ import {
   ServerMessageType,
 } from "libs/peer";
 import { ImmutableRecord } from "utils/record";
-import { ActivityLogType, useActivityLogs } from "./useActivityLog";
+import {
+  ActivityLogType,
+  toActivityLogType,
+  useActivityLogs,
+} from "./useActivityLog";
 import { genId } from "utils/id";
 import Peer, {
   DataConnection,
@@ -16,6 +20,7 @@ import Peer, {
   PeerErrorType,
   SocketEventType,
 } from "peerjs";
+import { useOnTabUnloaded } from "dto/useOnTabUnloaded";
 
 export type OnReceiveMessageFnType = (peerId: string, msg: PeerMessage) => any;
 
@@ -37,6 +42,7 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
   const serverPeerRef = useRef<Peer>();
   const peersRef = useRef<Record<string, DataConnection>>({}); // "We recommend keeping track of connections..." https://peerjs.com/docs/#peerconnections
   const { activityLogs, addActivityLog } = useActivityLogs();
+  useOnTabUnloaded(Boolean(serverPeerRef.current));
 
   const _onReceiveMessage: OnReceiveMessageFnType = (
     peerId: string,
@@ -140,12 +146,15 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
         addActivityLog({ peerId, type: msg.type, data: msg.data });
         const conn = peersRef.current[peerId];
         await conn.send(msg, true);
-        addActivityLog({ peerId, type: `${msg.type}_OK` as PeerMessageType });
+        addActivityLog({
+          peerId,
+          type: toActivityLogType(msg.type, "OK"),
+        });
         resolve();
       } catch (err) {
         addActivityLog({
           peerId,
-          type: `${msg.type}_ERROR` as PeerMessageType,
+          type: toActivityLogType(msg.type, "ERROR"),
           data: err,
         });
         reject(err);
@@ -164,10 +173,10 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
       addActivityLog({ type: messageType });
       listenToServerEvent(payload.type, onServerEvent);
       serverPeerRef.current?.socket.send({ type: "PEER_DROP", payload });
-      addActivityLog({ type: `${messageType}_OK` as ActivityLogType });
+      addActivityLog({ type: toActivityLogType(messageType, "OK") });
     } catch (err) {
       addActivityLog({
-        type: `${messageType}_ERROR` as ActivityLogType,
+        type: toActivityLogType(messageType, "ERROR"),
         data: err,
       });
     }
@@ -179,20 +188,19 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
   ) => {
     serverPeerRef.current?.socket?.once(
       SocketEventType.Message,
-      (message: any) => {
-        const msg = message as ServerMessage<T>;
-        if (msg.type === messageType) {
-          onServerEvent(msg);
+      (message: ServerMessage<T>) => {
+        if (message.type === messageType) {
+          onServerEvent(message);
 
-          if (msg.error) {
+          if (message.error) {
             addActivityLog({
-              type: `${messageType}_ERROR` as ActivityLogType,
-              data: msg.error,
+              type: toActivityLogType(messageType, "ERROR"),
+              data: message.error,
             });
           } else {
             addActivityLog({
-              type: `${messageType}_OK` as ActivityLogType,
-              // data: msg, // TODO
+              type: toActivityLogType(messageType, "OK"),
+              // data: message, // TODO
             });
           }
         }
