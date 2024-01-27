@@ -1,6 +1,6 @@
 import { DataFileListItem } from "libs/peer";
 import { FC } from "react";
-import { formatBytes } from "utils/file";
+import { formatBytes } from "utils/file/formatBytes";
 
 interface FilesProps {
   files: DataFileListItem[];

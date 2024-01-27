@@ -1,7 +1,6 @@
 import { useCallback, useEffect } from "react";
 
 export const useOnTabUnloaded = (showAlert: boolean, cb?: Function) => {
-  console.log("useOnTabUnloaded", showAlert);
   const handleTabUnloaded = useCallback(
     // 'handleTabClose' was created with this https://developer.mozilla.org/en-US/docs/Web/API/BeforeUnloadEvent
     (event: BeforeUnloadEvent) => {

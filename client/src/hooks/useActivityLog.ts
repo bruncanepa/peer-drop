@@ -1,5 +1,5 @@
 import { PeerMessageType } from "libs/peer";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ImmutableArray } from "utils/array";
 
 type ActivityLogTypeStatus = "OK" | "REQUESTED" | "ERROR";
@@ -43,15 +43,27 @@ export interface ActivityLog {
   type: ActivityLogType;
   data?: any;
   peerId?: string;
+  id?: string;
 }
 
 export const useActivityLogs = () => {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
 
-  const add = (log: ActivityLog) =>
-    setActivityLogs((l) =>
-      ImmutableArray.push(l, { ...log, date: new Date() })
-    );
+  const add = useCallback(
+    (log: ActivityLog) =>
+      setActivityLogs((logs) =>
+        ImmutableArray.pushUnique(
+          logs,
+          {
+            ...log,
+            date: new Date(),
+            id: new Date().toISOString() + log.type,
+          },
+          "id"
+        )
+      ),
+    []
+  );
 
   return { activityLogs, addActivityLog: add };
 };

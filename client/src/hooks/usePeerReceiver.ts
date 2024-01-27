@@ -11,7 +11,7 @@ import {
   SeverMessageDataGetRoomReq,
   SeverMessageDataGetRoomRes,
 } from "libs/peer";
-import { downloadFile } from "utils/file";
+import { downloadFile } from "utils/file/download";
 
 interface usePeerReceiverProps {
   roomId: string;
