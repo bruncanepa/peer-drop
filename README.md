@@ -1,5 +1,5 @@
 # PeerDrop
 
-> **A file transfer platform over P2P and E2EE using WebRTC**
+> **A decentralized-E2EE file transfer platform using WebRTC**
 
 Note: Currently under development.
