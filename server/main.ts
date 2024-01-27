@@ -56,6 +56,12 @@ interface ServerMessage<T extends ISeverMessageDataReq> {
   data: T;
   error?: string;
 }
+
+interface ServerMessageWrapped<T extends ISeverMessageDataReq> {
+  type: PeerMessageType;
+  payload: ServerMessage<T>;
+}
+
 /**  END SHARE WITH WEB  */
 
 const peerServer: express.Express & PeerServerEvents =
@@ -80,19 +86,25 @@ peerServer.on("message", (client: IClient, message: IMessage) => {
           const { userId } = payload.data as SeverMessageDataCreateRoomReq;
           const room = roomManager.add(userId);
           return client.send({
-            data: room,
-            type: payload.type,
-          } as ServerMessage<SeverMessageDataCreateRoomRes>);
+            type: PeerMessageType.PEER_DROP,
+            payload: {
+              data: room,
+              type: payload.type,
+            },
+          } as ServerMessageWrapped<SeverMessageDataCreateRoomRes>);
         }
 
         case "GET_ROOM": {
           const { roomId } = payload.data as SeverMessageDataGetRoomReq;
           const room = roomManager.get(roomId);
           return client.send({
-            data: room,
-            type: payload.type,
-            error: room ? "" : `room not found`,
-          } as ServerMessage<SeverMessageDataGetRoomRes>);
+            type: PeerMessageType.PEER_DROP,
+            payload: {
+              data: room,
+              type: payload.type,
+              error: room ? "" : `room not found`,
+            },
+          } as ServerMessageWrapped<SeverMessageDataGetRoomRes>);
         }
 
         default:

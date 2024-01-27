@@ -5,6 +5,8 @@ export enum PeerMessageType {
   FILES_LIST_RES = "FILES_LIST_RES",
   FILES_DOWNLOAD_REQ = "FILES_DOWNLOAD_REQ",
   FILES_DOWNLOAD_RES = "FILES_DOWNLOAD_RES",
+  FILES_DOWNLOAD_PROGRESS = "FILES_DOWNLOAD_PROGRESS",
+  PEER_DROP = "PEER_DROP",
 }
 
 /**  BEGIN SHARE WITH BACKEND  */
@@ -36,6 +38,10 @@ export interface ServerMessage<T extends ISeverMessageDataReq> {
   data: T;
   error?: string;
 }
+export interface ServerMessageWrapped<T extends ISeverMessageDataReq> {
+  type: string;
+  payload: ServerMessage<T>;
+}
 /**  END SHARE WITH BACKEND  */
 
 export interface IData {}
@@ -45,6 +51,13 @@ export interface DataFile extends IData {
   name: string;
   type: string;
   size: number;
+  id: string;
+}
+
+export interface DataFileProgress extends IData {
+  id: string;
+  progress: number;
+  total: number;
 }
 
 export type DataFileListItem = Omit<DataFile, "blob">;
@@ -59,3 +72,10 @@ export interface PeerMessage {
 }
 
 export type OnReceiveMessageFnType = (peerId: string, msg: PeerMessage) => any;
+
+export type Chunk = {
+  __peerData: number;
+  n: number;
+  total: number;
+  data: ArrayBuffer;
+}

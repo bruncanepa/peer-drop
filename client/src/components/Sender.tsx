@@ -4,6 +4,7 @@ import { usePeerSender } from "hooks/usePeerSender";
 import { ActivityLog } from "./ActivityLog";
 import { Files } from "./Files";
 import { Box } from "./common/Box";
+import { DataFileListItem } from "libs/peer";
 
 interface SenderProps {}
 
@@ -14,14 +15,27 @@ const Sender: FC<SenderProps> = () => {
     peers,
     sendingFiles,
     activityLogs,
+    sendingFileProgress,
     onSelectFiles,
     copyShareLink,
     onRemoveFile,
   } = usePeerSender();
 
+  const _onRemoveFile = (file: DataFileListItem | File) =>
+    onRemoveFile(file as DataFileListItem);
+
+  const _files = files as unknown as DataFileListItem[];
+
   return (
-    <>
-      <ActivityLog items={activityLogs} myId={myId} />
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <progress
+        style={{ width: "100%" }}
+        id="file"
+        value={sendingFileProgress}
+        max="100"
+      >
+        {sendingFileProgress}%
+      </progress>
 
       <Box
         style={{
@@ -34,7 +48,7 @@ const Sender: FC<SenderProps> = () => {
       >
         <input type="file" onChange={onSelectFiles} />
 
-        <Files files={files} onRemoveFile={onRemoveFile} />
+        <Files files={_files} onRemoveFile={_onRemoveFile} />
 
         {files?.length && (
           <button onClick={copyShareLink}>Copy room's link to share</button>
@@ -44,7 +58,9 @@ const Sender: FC<SenderProps> = () => {
 
         {sendingFiles && <span>Sending files...</span>}
       </Box>
-    </>
+
+      <ActivityLog items={activityLogs} myId={myId} />
+    </div>
   );
 };
 

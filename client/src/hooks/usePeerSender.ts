@@ -5,6 +5,7 @@ import {
   DataFile,
   DataFileList,
   DataFileListItem,
+  DataFileProgress,
   PeerMessage,
   PeerMessageType,
   ServerMessage,
@@ -17,6 +18,7 @@ export const usePeerSender = () => {
   const filesRef = useRef<File[]>([]);
   const [room, setRoom] = useState<Room>();
   const [sendingFiles, setSendingFiles] = useState(false);
+  const [sendingProgress, setSendingProgress] = useState(0);
 
   const onReceiveMessage = (peerId: string, msg: PeerMessage) => {
     switch (msg.type) {
@@ -44,6 +46,11 @@ export const usePeerSender = () => {
             })),
           } as DataFileList,
         });
+      }
+      case PeerMessageType.FILES_DOWNLOAD_PROGRESS: {
+        const { progress, total } = msg.data as DataFileProgress;
+        setSendingProgress(Math.trunc((progress / total) * 100));
+        return;
       }
     }
   };
@@ -98,6 +105,7 @@ export const usePeerSender = () => {
     fileSession: room,
     sendingFiles,
     activityLogs,
+    sendingFileProgress: sendingProgress,
     startSession,
     onSelectFiles,
     copyShareLink,

@@ -52,15 +52,17 @@ export const useActivityLogs = () => {
   const add = useCallback(
     (log: ActivityLog) =>
       setActivityLogs((logs) =>
-        ImmutableArray.pushUnique(
-          logs,
-          {
-            ...log,
-            date: new Date(),
-            id: new Date().toISOString() + log.type,
-          },
-          "id"
-        )
+        log.type === PeerMessageType.FILES_DOWNLOAD_PROGRESS
+          ? logs
+          : ImmutableArray.pushUnique(
+              logs,
+              {
+                ...log,
+                date: new Date(),
+                id: new Date().toISOString() + log.type,
+              },
+              "id"
+            )
       ),
     []
   );

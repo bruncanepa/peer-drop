@@ -4,7 +4,7 @@ import { formatBytes } from "utils/file/formatBytes";
 
 interface FilesProps {
   files: DataFileListItem[];
-  onRemoveFile: (file: DataFileListItem | File) => void;
+  onRemoveFile: (file: DataFileListItem) => void;
 }
 
 export const Files: FC<FilesProps> = ({ files, onRemoveFile }) => {

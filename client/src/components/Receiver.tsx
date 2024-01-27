@@ -22,9 +22,7 @@ const Receiver: FC<ReceiverProps> = ({ sharedId: roomId }) => {
   } = usePeerReceiver({ roomId });
 
   return (
-    <>
-      <ActivityLog items={activityLogs} myId={myId} />
-
+    <div style={{ display: "flex", flexDirection: "column" }}>
       {Boolean(room) ? (
         <Box style={{ marginLeft: "2%" }}>
           <h3>Files to download</h3>
@@ -46,7 +44,9 @@ const Receiver: FC<ReceiverProps> = ({ sharedId: roomId }) => {
       )}
 
       {Boolean(error) && <span>Error {error?.message}</span>}
-    </>
+
+      <ActivityLog items={activityLogs} myId={myId} />
+    </div>
   );
 };
 

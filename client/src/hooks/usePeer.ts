@@ -1,11 +1,15 @@
 import { useRef } from "react";
+import { unpack } from "peerjs-js-binarypack";
 import {
+  Chunk,
+  DataFileProgress,
   ISeverMessageDataReq,
   ISeverMessageDataRes,
   PeerMessage,
   PeerMessageType,
   ServerMessage,
   ServerMessageType,
+  ServerMessageWrapped,
 } from "libs/peer";
 import { ImmutableRecord } from "utils/record";
 import {
@@ -34,7 +38,11 @@ interface UsePeerProps {
 const isSender = (peerType: PeerType) => peerType === "SENDER";
 const isInterestedInMessage = (peerType: PeerType, msgType: PeerMessageType) =>
   (isSender(peerType)
-    ? [PeerMessageType.FILES_DOWNLOAD_REQ, PeerMessageType.FILES_LIST_REQ]
+    ? [
+        PeerMessageType.FILES_DOWNLOAD_REQ,
+        PeerMessageType.FILES_LIST_REQ,
+        PeerMessageType.FILES_DOWNLOAD_PROGRESS,
+      ]
     : [PeerMessageType.FILES_LIST_RES, PeerMessageType.FILES_DOWNLOAD_RES]
   ).includes(msgType);
 
@@ -65,6 +73,25 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
         peersRef.current = ImmutableRecord.add(peersRef.current, peerId, conn);
         if (callback) callback();
         addActivityLog({ peerId, type: "LISTEN_CONNECTION_OK" });
+        if (!isSender(peerType)) {
+          conn.dataChannel.addEventListener(
+            "message",
+            (event: MessageEvent) => {
+              const chunk = unpack<Chunk>(event.data);
+              if (chunk.__peerData && chunk.total) {
+                const peerMsg: PeerMessage = {
+                  type: PeerMessageType.FILES_DOWNLOAD_PROGRESS,
+                  data: {
+                    id: "",
+                    progress: chunk.n,
+                    total: chunk.total,
+                  } as DataFileProgress,
+                };
+                conn.send(peerMsg);
+              }
+            }
+          );
+        }
       })
       .on("data", (receivedData: any) => {
         _onReceiveMessage(peerId, receivedData as PeerMessage);
@@ -141,11 +168,11 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
     });
 
   const sendMessageToPeer = (peerId: string, msg: PeerMessage): Promise<void> =>
-    new Promise(async (resolve, reject) => {
+    new Promise((resolve, reject) => {
       try {
         addActivityLog({ peerId, type: msg.type, data: msg.data });
         const conn = peersRef.current[peerId];
-        await conn.send(msg, true);
+        conn.send(msg);
         addActivityLog({
           peerId,
           type: toActivityLogType(msg.type, "OK"),
@@ -188,20 +215,23 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
   ) => {
     serverPeerRef.current?.socket?.once(
       SocketEventType.Message,
-      (message: ServerMessage<T>) => {
-        if (message.type === messageType) {
-          onServerEvent(message);
+      (message: ServerMessageWrapped<T>) => {
+        if (message.type === "PEER_DROP") {
+          const { payload } = message;
+          if (payload.type === messageType) {
+            onServerEvent(payload);
 
-          if (message.error) {
-            addActivityLog({
-              type: toActivityLogType(messageType, "ERROR"),
-              data: message.error,
-            });
-          } else {
-            addActivityLog({
-              type: toActivityLogType(messageType, "OK"),
-              // data: message, // TODO
-            });
+            if (payload.error) {
+              addActivityLog({
+                type: toActivityLogType(messageType, "ERROR"),
+                data: payload.error,
+              });
+            } else {
+              addActivityLog({
+                type: toActivityLogType(messageType, "OK"),
+                // data: message, // TODO
+              });
+            }
           }
         }
       }
