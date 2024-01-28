@@ -5,6 +5,7 @@ import { ActivityLog } from "./ActivityLog";
 import { Files } from "./Files";
 import { Box } from "./common/Box";
 import { DataFileListItem } from "libs/peer";
+import { Progress } from "./Progress";
 
 interface SenderProps {}
 
@@ -28,14 +29,7 @@ const Sender: FC<SenderProps> = () => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      <progress
-        style={{ width: "100%" }}
-        id="file"
-        value={sendingFileProgress}
-        max="100"
-      >
-        {sendingFileProgress}%
-      </progress>
+      <Progress progress={sendingFileProgress} />
 
       <Box
         style={{

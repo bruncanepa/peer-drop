@@ -4,6 +4,7 @@ import { usePeerReceiver } from "hooks/usePeerReceiver";
 import { ActivityLog } from "./ActivityLog";
 import { Box } from "./common/Box";
 import { Files } from "./Files";
+import { Progress } from "./Progress";
 
 interface ReceiverProps {
   sharedId: string;
@@ -17,12 +18,15 @@ const Receiver: FC<ReceiverProps> = ({ sharedId: roomId }) => {
     error,
     myId,
     activityLogs,
+    downloadFileProgress,
     downloadFiles,
     onRemoveFile,
   } = usePeerReceiver({ roomId });
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
+      <Progress progress={downloadFileProgress} />
+
       {Boolean(room) ? (
         <Box style={{ marginLeft: "2%" }}>
           <h3>Files to download</h3>

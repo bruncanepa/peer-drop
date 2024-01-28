@@ -45,6 +45,7 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
     myId,
     peers,
     activityLogs,
+    fileProgress,
     sendMessageToPeer,
     startSession,
     connectToNewPeer,
@@ -113,6 +114,7 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
     peers,
     error,
     activityLogs,
+    downloadFileProgress: fileProgress,
     downloadFiles,
     onRemoveFile,
   };
