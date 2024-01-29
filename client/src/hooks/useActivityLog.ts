@@ -1,5 +1,5 @@
 import { PeerMessageType } from "libs/peer";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { ImmutableArray } from "utils/array";
 
 type ActivityLogTypeStatus = "OK" | "REQUESTED" | "ERROR";
@@ -52,7 +52,7 @@ export const useActivityLogs = () => {
   const add = useCallback(
     (log: ActivityLog) =>
       setActivityLogs((logs) =>
-        log.type === PeerMessageType.FILES_DOWNLOAD_PROGRESS
+        log.type === "FILES_DOWNLOAD_PROGRESS"
           ? logs
           : ImmutableArray.pushUnique(
               logs,
@@ -60,6 +60,7 @@ export const useActivityLogs = () => {
                 ...log,
                 date: new Date(),
                 id: new Date().toISOString() + log.type,
+                data: undefined, // TODO
               },
               "id"
             )

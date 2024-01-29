@@ -5,8 +5,8 @@ import {
   DataFile,
   DataFileList,
   DataFileListItem,
+  FilesDownloadReq,
   PeerMessage,
-  PeerMessageType,
   ServerMessage,
   SeverMessageDataGetRoomReq,
   SeverMessageDataGetRoomRes,
@@ -24,13 +24,13 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
 
   const onReceiveMessage = (peerId: string, msg: PeerMessage) => {
     switch (msg.type) {
-      case PeerMessageType.FILES_LIST_RES: {
+      case "FILES_LIST_RES": {
         const data = msg.data as DataFileList;
         setFiles(data.items);
         return;
       }
 
-      case PeerMessageType.FILES_DOWNLOAD_RES: {
+      case "FILES_DOWNLOAD_RES": {
         const data = msg.data as DataFile;
         return downloadFile(
           data.blob as Blob,
@@ -45,7 +45,7 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
     myId,
     peers,
     activityLogs,
-    fileProgress,
+    fileProgressMap,
     sendMessageToPeer,
     startSession,
     connectToNewPeer,
@@ -61,10 +61,7 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
       if (roomId) {
         try {
           await startSession();
-          const room = await getRoom();
-          sendMessageToPeer(room.ownerId, {
-            type: PeerMessageType.FILES_LIST_REQ,
-          });
+          await getRoom();
         } catch (err) {
           setError(err as Error);
         }
@@ -73,39 +70,36 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const getRoom = (): Promise<Room> => {
-    return new Promise((resolve, reject) => {
-      sendMessageToServer<
-        SeverMessageDataGetRoomReq,
-        SeverMessageDataGetRoomRes
-      >(
-        "GET_ROOM_REQUESTED",
-        { type: "GET_ROOM", data: { roomId } },
-        (message: ServerMessage<SeverMessageDataGetRoomRes>) => {
-          if (message.error) return reject(new Error(message.error));
+  const getRoom = () =>
+    sendMessageToServer<SeverMessageDataGetRoomReq, SeverMessageDataGetRoomRes>(
+      "GET_ROOM_REQUESTED",
+      { type: "GET_ROOM", data: { roomId } },
+      async (message: ServerMessage<SeverMessageDataGetRoomRes>) => {
+        if (message.error) return setError(new Error(message.error));
+        try {
           const room = message.data;
           setRoom(room);
-          connectToNewPeer(room.ownerId)
-            .then(() => resolve(room))
-            .catch((err) => {
-              const error = err as Error;
-              setError(error);
-              reject(err);
-            });
+          await connectToNewPeer(room.ownerId);
+          await sendMessageToPeer(room.ownerId, { type: "FILES_LIST_REQ" });
+        } catch (err) {
+          setError(err as Error);
         }
-      );
-    });
-  };
+      }
+    );
 
   const downloadFiles = () =>
     room &&
     sendMessageToPeer(room.ownerId, {
-      type: PeerMessageType.FILES_DOWNLOAD_REQ,
-    });
+      type: "FILES_DOWNLOAD_REQ",
+      data: { files: files.map((f) => f.name) },
+    } as FilesDownloadReq);
 
-  const onRemoveFile = (file: DataFileListItem) => {
-    setFiles((fs) => fs.filter((f) => f.name !== file.name));
-  };
+  const onRemoveFile = (file: DataFileListItem) =>
+    setFiles((fs) =>
+      fs
+        .filter((f) => f.name !== file.name)
+        .map((f, id) => ({ ...f, id: `${id + 1}` }))
+    );
 
   return {
     myId,
@@ -114,7 +108,7 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
     peers,
     error,
     activityLogs,
-    downloadFileProgress: fileProgress,
+    downloadFileProgressMap: fileProgressMap,
     downloadFiles,
     onRemoveFile,
   };

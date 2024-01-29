@@ -1,10 +1,10 @@
 import { FC } from "react";
+import { Button, Flex, Text } from "@chakra-ui/react";
 import { Peers } from "./Peers";
 import { usePeerReceiver } from "hooks/usePeerReceiver";
 import { ActivityLog } from "./ActivityLog";
 import { Box } from "./common/Box";
 import { Files } from "./Files";
-import { Progress } from "./Progress";
 
 interface ReceiverProps {
   sharedId: string;
@@ -18,39 +18,40 @@ const Receiver: FC<ReceiverProps> = ({ sharedId: roomId }) => {
     error,
     myId,
     activityLogs,
-    downloadFileProgress,
+    downloadFileProgressMap,
     downloadFiles,
     onRemoveFile,
   } = usePeerReceiver({ roomId });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      <Progress progress={downloadFileProgress} />
-
+    <Flex direction="column">
       {Boolean(room) ? (
         <Box style={{ marginLeft: "2%" }}>
           <h3>Files to download</h3>
 
           {files.length ? (
             <>
-              <Files files={files} onRemoveFile={onRemoveFile} />
-
-              <button onClick={downloadFiles}>Download</button>
+              <Files
+                files={files}
+                onRemoveFile={onRemoveFile}
+                filesProgressMap={downloadFileProgressMap}
+              />
+              <Button onClick={downloadFiles}>Download</Button>
             </>
           ) : (
-            <span>No files</span>
+            <Text>No files</Text>
           )}
 
           <Peers items={peers} />
         </Box>
       ) : (
-        !Boolean(error) && <span>Loading...</span>
+        !Boolean(error) && <Text>Loading...</Text>
       )}
 
-      {Boolean(error) && <span>Error {error?.message}</span>}
+      {Boolean(error) && <Text>Error {error?.message}</Text>}
 
       <ActivityLog items={activityLogs} myId={myId} />
-    </div>
+    </Flex>
   );
 };
 

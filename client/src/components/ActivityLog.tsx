@@ -1,4 +1,5 @@
 import { FC } from "react";
+import { Text } from "@chakra-ui/react";
 import { ActivityLog as ActivityLogClass } from "hooks/useActivityLog";
 import { idToShortId } from "utils/id";
 import { Box } from "./common/Box";
@@ -10,12 +11,14 @@ interface ActivityLogProps {
 
 export const ActivityLog: FC<ActivityLogProps> = ({ items, myId }) => {
   return (
-    <Box style={{ display: "flex", flexDirection: "column" }}>
+    <Box
+      style={{ display: "flex", flexDirection: "column", overflow: "scroll" }}
+    >
       <h3>Activity Log </h3>
       {!!myId && (
-        <span style={{ fontWeight: "bold", marginBottom: "5%" }}>
+        <Text style={{ fontWeight: "bold", marginBottom: "5%" }}>
           You are: {idToShortId(myId)}
-        </span>
+        </Text>
       )}
       {items.length ? (
         <table>
@@ -44,7 +47,7 @@ export const ActivityLog: FC<ActivityLogProps> = ({ items, myId }) => {
           </tbody>
         </table>
       ) : (
-        <span>No logs yet</span>
+        <Text>No logs yet</Text>
       )}
     </Box>
   );

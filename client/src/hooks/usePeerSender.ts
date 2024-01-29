@@ -1,46 +1,52 @@
-import { ChangeEvent, useRef, useState } from "react";
+import { ChangeEvent, useState } from "react";
 import { usePeer } from "./usePeer";
 import { Room } from "dto/room";
 import {
   DataFile,
   DataFileList,
   DataFileListItem,
+  FilesDownloadReq,
   PeerMessage,
-  PeerMessageType,
   ServerMessage,
   SeverMessageDataCreateRoomReq,
   SeverMessageDataCreateRoomRes,
 } from "libs/peer";
 import { Logger } from "utils/logger";
+import { useUpdatableRef } from "./useUpdatableRef";
 
 export const usePeerSender = () => {
-  const filesRef = useRef<File[]>([]);
+  const [filesRef, updateFilesRef] = useUpdatableRef<File[]>([]);
   const [room, setRoom] = useState<Room>();
-  const [sendingFiles, setSendingFiles] = useState(false);
 
   const onReceiveMessage = (peerId: string, msg: PeerMessage) => {
     switch (msg.type) {
-      case PeerMessageType.FILES_DOWNLOAD_REQ: {
-        setSendingFiles(true);
-        const file = filesRef.current[0];
-        return sendMessageToPeer(peerId, {
-          type: PeerMessageType.FILES_DOWNLOAD_RES,
-          data: {
-            blob: new Blob([file], { type: file.type }),
-            name: file.name,
-            type: file.type,
-            size: file.size,
-          } as DataFile,
-        }).finally(() => setSendingFiles(false));
+      case "FILES_DOWNLOAD_REQ": {
+        const { data } = msg as FilesDownloadReq;
+        filesRef.current
+          .filter((f) => data.files.includes(f.name))
+          .forEach((file, id) => {
+            sendMessageToPeer(peerId, {
+              type: "FILES_DOWNLOAD_RES",
+              data: {
+                blob: new Blob([file], { type: file.type }),
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                id: `${id + 1}`,
+              } as DataFile,
+            });
+          });
+        return;
       }
-      case PeerMessageType.FILES_LIST_REQ: {
+      case "FILES_LIST_REQ": {
         return sendMessageToPeer(peerId, {
-          type: PeerMessageType.FILES_LIST_RES,
+          type: "FILES_LIST_RES",
           data: {
-            items: filesRef.current.map((f) => ({
+            items: filesRef.current.map((f, i) => ({
               name: f.name,
               size: f.size,
               type: f.type,
+              id: `${i + 1}`,
             })),
           } as DataFileList,
         });
@@ -52,7 +58,6 @@ export const usePeerSender = () => {
     myId,
     peers,
     activityLogs,
-    fileProgress,
     sendMessageToPeer,
     startSession,
     addActivityLog,
@@ -78,7 +83,7 @@ export const usePeerSender = () => {
   };
 
   const onSelectFiles = (event: ChangeEvent<HTMLInputElement>) => {
-    filesRef.current = Array.from(event.target.files || []);
+    updateFilesRef(Array.from(event.target.files || []));
     createRoom();
   };
 
@@ -89,7 +94,7 @@ export const usePeerSender = () => {
       .then(() => addActivityLog({ type: "COPY_SHARE_URL" }));
 
   const onRemoveFile = (file: DataFileListItem) => {
-    filesRef.current = filesRef.current.filter((f) => f.name !== file.name);
+    updateFilesRef(filesRef.current.filter((f) => f.name !== file.name));
   };
 
   return {
@@ -97,9 +102,7 @@ export const usePeerSender = () => {
     peers,
     files: filesRef.current,
     fileSession: room,
-    sendingFiles,
     activityLogs,
-    sendingFileProgress: fileProgress,
     startSession,
     onSelectFiles,
     copyShareLink,

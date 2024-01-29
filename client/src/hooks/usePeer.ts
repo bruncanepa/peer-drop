@@ -25,7 +25,7 @@ import Peer, {
   SocketEventType,
 } from "peerjs";
 import { useOnTabUnloaded } from "dto/useOnTabUnloaded";
-import { useProgress } from "./useProgress";
+import { useMultipleProgress } from "./useMultipleProgess";
 
 export type OnReceiveMessageFnType = (peerId: string, msg: PeerMessage) => any;
 
@@ -39,15 +39,15 @@ interface UsePeerProps {
 const isSender = (peerType: PeerType) => peerType === "SENDER";
 const isInterestedInMessage = (peerType: PeerType, msgType: PeerMessageType) =>
   (isSender(peerType)
-    ? [PeerMessageType.FILES_DOWNLOAD_REQ, PeerMessageType.FILES_LIST_REQ]
-    : [PeerMessageType.FILES_LIST_RES, PeerMessageType.FILES_DOWNLOAD_RES]
+    ? (["FILES_DOWNLOAD_REQ", "FILES_LIST_REQ"] as PeerMessageType[])
+    : (["FILES_LIST_RES", "FILES_DOWNLOAD_RES"] as PeerMessageType[])
   ).includes(msgType);
 
 export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
   const serverPeerRef = useRef<Peer>();
   const peersRef = useRef<Record<string, DataConnection>>({}); // "We recommend keeping track of connections..." https://peerjs.com/docs/#peerconnections
   const { activityLogs, addActivityLog } = useActivityLogs();
-  const { progressPercentage, onProgress } = useProgress(0);
+  const { progressMap, onProgress } = useMultipleProgress();
   const peerIsSender = isSender(peerType);
   useOnTabUnloaded(Boolean(serverPeerRef.current));
 
@@ -57,9 +57,9 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
   ) => {
     if (isInterestedInMessage(peerType, msg.type)) {
       onReceiveMessage(peerId, msg);
-    } else if (msg.type === PeerMessageType.FILES_DOWNLOAD_PROGRESS) {
+    } else if (msg.type === "FILES_DOWNLOAD_PROGRESS") {
       const msgData = msg.data as DataFileProgress;
-      onProgress(msgData.progress, msgData.total);
+      onProgress(msgData.id, msgData.progress, msgData.total);
     }
     addActivityLog({ type: msg.type, peerId, data: msg.data });
   };
@@ -81,20 +81,21 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
             (event: MessageEvent) => {
               const chunk = unpack<Chunk>(event.data);
               if (chunk.__peerData && chunk.total) {
+                // update every 5% progress or when completed
                 const fivePercentage = Math.trunc(chunk.total * 0.05);
                 const isPrevLastChunk = chunk.n === chunk.total - 1;
                 if (isPrevLastChunk || chunk.n % fivePercentage === 0) {
                   const progress = isPrevLastChunk ? chunk.total : chunk.n;
-                  onProgress(progress, chunk.total);
-                  const peerMsg: PeerMessage = {
-                    type: PeerMessageType.FILES_DOWNLOAD_PROGRESS,
-                    data: {
-                      id: `${chunk.__peerData}`,
-                      progress,
-                      total: chunk.total,
-                    } as DataFileProgress,
-                  };
-                  conn.send(peerMsg);
+                  onProgress(`${chunk.__peerData}`, progress, chunk.total);
+                  // const peerMsg: PeerMessage = {
+                  //   type: "FILES_DOWNLOAD_PROGRESS",
+                  //   data: {
+                  //     id: `${chunk.__peerData}`,
+                  //     progress,
+                  //     total: chunk.total,
+                  //   } as DataFileProgress,
+                  // };
+                  // conn.send(peerMsg);
                 }
               }
             }
@@ -250,7 +251,7 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
     myId: serverPeerRef.current?.id || "",
     peers: Object.keys(peersRef.current).map((p) => peersRef.current[p].peer),
     activityLogs,
-    fileProgress: progressPercentage,
+    fileProgressMap: progressMap,
     startSession,
     connectToNewPeer,
     sendMessageToPeer,

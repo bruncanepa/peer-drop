@@ -1,11 +1,12 @@
 import { FC } from "react";
+import { Button, Flex } from "@chakra-ui/react";
 import { Peers } from "./Peers";
 import { usePeerSender } from "hooks/usePeerSender";
 import { ActivityLog } from "./ActivityLog";
 import { Files } from "./Files";
 import { Box } from "./common/Box";
 import { DataFileListItem } from "libs/peer";
-import { Progress } from "./Progress";
+import { FileInput } from "./common/FileInput";
 
 interface SenderProps {}
 
@@ -14,47 +15,42 @@ const Sender: FC<SenderProps> = () => {
     myId,
     files,
     peers,
-    sendingFiles,
     activityLogs,
-    sendingFileProgress,
     onSelectFiles,
     copyShareLink,
     onRemoveFile,
   } = usePeerSender();
 
-  const _onRemoveFile = (file: DataFileListItem | File) =>
-    onRemoveFile(file as DataFileListItem);
-
-  const _files = files as unknown as DataFileListItem[];
+  const _files: DataFileListItem[] = files.map((f, i) => ({
+    id: `${i + 1}`,
+    name: f.name,
+    size: f.size,
+    type: f.type,
+  }));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      <Progress progress={sendingFileProgress} />
-
+    <Flex direction="column">
       <Box
         style={{
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
           alignItems: "center",
-          marginLeft: "2%",
         }}
       >
-        <input type="file" onChange={onSelectFiles} />
+        <FileInput onSelectFiles={onSelectFiles} />
 
-        <Files files={_files} onRemoveFile={_onRemoveFile} />
+        <Files files={_files} onRemoveFile={onRemoveFile} />
 
         {files?.length && (
-          <button onClick={copyShareLink}>Copy room's link to share</button>
+          <Button onClick={copyShareLink}>Copy room's link to share</Button>
         )}
 
         {!!peers.length && <Peers items={peers} />}
-
-        {sendingFiles && <span>Sending files...</span>}
       </Box>
 
       <ActivityLog items={activityLogs} myId={myId} />
-    </div>
+    </Flex>
   );
 };
 

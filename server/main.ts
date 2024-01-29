@@ -28,7 +28,7 @@ enum PeerMessageType {
   LEAVE = "LEAVE",
   OFFER = "OFFER",
   OPEN = "OPEN",
-  PEER_DROP = "PEER_DROP",
+  PEER_DROP = "PEER_DROP", // CUSTOM
 }
 
 /**  BEGIN SHARE WITH WEB  */
