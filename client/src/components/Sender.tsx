@@ -7,6 +7,7 @@ import { Files } from "./Files";
 import { Box } from "./common/Box";
 import { DataFileListItem } from "libs/peer";
 import { FileInput } from "./common/FileInput";
+import { Shell } from "./common/Shell";
 
 interface SenderProps {}
 
@@ -29,28 +30,23 @@ const Sender: FC<SenderProps> = () => {
   }));
 
   return (
-    <Flex direction="column">
-      <Box
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <FileInput onSelectFiles={onSelectFiles} />
+    <Shell columnGap="2%">
+      <Box flex={1} flexDirection="column">
+        <Flex width="100%" justifyContent="space-between">
+          <FileInput onSelectFiles={onSelectFiles} />
+
+          <Button isDisabled={!Boolean(files?.length)} onClick={copyShareLink}>
+            Copy room's link to share
+          </Button>
+        </Flex>
 
         <Files files={_files} onRemoveFile={onRemoveFile} />
-
-        {files?.length && (
-          <Button onClick={copyShareLink}>Copy room's link to share</Button>
-        )}
 
         {!!peers.length && <Peers items={peers} />}
       </Box>
 
-      <ActivityLog items={activityLogs} myId={myId} />
-    </Flex>
+      <ActivityLog width="100%" items={activityLogs} myId={myId} flex={1} />
+    </Shell>
   );
 };
 

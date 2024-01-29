@@ -1,10 +1,11 @@
 import { FC } from "react";
-import { Button, Flex, Text } from "@chakra-ui/react";
+import { Button, Text } from "@chakra-ui/react";
 import { Peers } from "./Peers";
 import { usePeerReceiver } from "hooks/usePeerReceiver";
 import { ActivityLog } from "./ActivityLog";
 import { Box } from "./common/Box";
 import { Files } from "./Files";
+import { Shell } from "./common/Shell";
 
 interface ReceiverProps {
   sharedId: string;
@@ -15,7 +16,6 @@ const Receiver: FC<ReceiverProps> = ({ sharedId: roomId }) => {
     files,
     room,
     peers,
-    error,
     myId,
     activityLogs,
     downloadFileProgressMap,
@@ -24,9 +24,9 @@ const Receiver: FC<ReceiverProps> = ({ sharedId: roomId }) => {
   } = usePeerReceiver({ roomId });
 
   return (
-    <Flex direction="column">
+    <Shell columnGap="2%">
       {Boolean(room) ? (
-        <Box style={{ marginLeft: "2%" }}>
+        <Box flex={1} flexDirection="column">
           <h3>Files to download</h3>
 
           {files.length ? (
@@ -45,13 +45,11 @@ const Receiver: FC<ReceiverProps> = ({ sharedId: roomId }) => {
           <Peers items={peers} />
         </Box>
       ) : (
-        !Boolean(error) && <Text>Loading...</Text>
+        <Text>Loading...</Text>
       )}
 
-      {Boolean(error) && <Text>Error {error?.message}</Text>}
-
-      <ActivityLog items={activityLogs} myId={myId} />
-    </Flex>
+      <ActivityLog width="100%" items={activityLogs} myId={myId} flex={1} />
+    </Shell>
   );
 };
 

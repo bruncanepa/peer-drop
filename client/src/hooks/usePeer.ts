@@ -17,7 +17,7 @@ import {
   toActivityLogType,
   useActivityLogs,
 } from "./useActivityLog";
-import { genId } from "utils/id";
+import { genId, idToShortId } from "utils/id";
 import Peer, {
   DataConnection,
   PeerError,
@@ -26,6 +26,7 @@ import Peer, {
 } from "peerjs";
 import { useOnTabUnloaded } from "dto/useOnTabUnloaded";
 import { useMultipleProgress } from "./useMultipleProgess";
+import { UseToastOptions, useToast } from "@chakra-ui/react";
 
 export type OnReceiveMessageFnType = (peerId: string, msg: PeerMessage) => any;
 
@@ -43,13 +44,28 @@ const isInterestedInMessage = (peerType: PeerType, msgType: PeerMessageType) =>
     : (["FILES_LIST_RES", "FILES_DOWNLOAD_RES"] as PeerMessageType[])
   ).includes(msgType);
 
+const toastDefaultProps: UseToastOptions = { duration: null, isClosable: true };
+
 export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
   const serverPeerRef = useRef<Peer>();
   const peersRef = useRef<Record<string, DataConnection>>({}); // "We recommend keeping track of connections..." https://peerjs.com/docs/#peerconnections
-  const { activityLogs, addActivityLog } = useActivityLogs();
   const { progressMap, onProgress } = useMultipleProgress();
   const peerIsSender = isSender(peerType);
   useOnTabUnloaded(Boolean(serverPeerRef.current));
+  const toast = useToast();
+
+  const toastSuccess = (title: string) =>
+    toast({ ...toastDefaultProps, title, status: "error" });
+  const toastInfo = (title: string) =>
+    toast({ ...toastDefaultProps, title, status: "info" });
+  const toastError = (err: Error) =>
+    toast({
+      ...toastDefaultProps,
+      title: err.message || "An error ocurred",
+      status: "error",
+    });
+
+  const { activityLogs, addActivityLog } = useActivityLogs(toastError);
 
   const _onReceiveMessage: OnReceiveMessageFnType = (
     peerId: string,
@@ -181,6 +197,9 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
       try {
         addActivityLog({ peerId, type: msg.type, data: msg.data });
         const conn = peersRef.current[peerId];
+        if (!conn) {
+          throw new Error(`Connection ${idToShortId(peerId)} disconnected`);
+        }
         conn.send(msg);
         addActivityLog({
           peerId,
@@ -197,7 +216,7 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
       }
     });
 
-  const sendMessageToServer = async <
+  const sendMessageToServer = <
     T extends ISeverMessageDataReq,
     X extends ISeverMessageDataRes
   >(
@@ -258,5 +277,8 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
     addActivityLog,
     sendMessageToServer,
     listenToServerEvents: listenToServerEvent,
+    toastSuccess,
+    toastError,
+    toastInfo,
   };
 };

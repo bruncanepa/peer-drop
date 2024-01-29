@@ -1,22 +1,17 @@
-import { CSSProperties, FC, ReactNode } from "react";
+import { FC } from "react";
+import { Flex, FlexProps } from "@chakra-ui/react";
 
-interface BoxProps {
-  children: ReactNode;
-  style?: CSSProperties;
-}
+interface BoxProps extends FlexProps {}
 
-export const Box: FC<BoxProps> = ({ children, style, ...props }) => {
+export const Box: FC<BoxProps> = ({ children, ...props }) => {
   return (
-    <section
+    <Flex
+      border="1px solid lightgrey"
+      borderRadius="5px"
+      padding="2%"
       {...props}
-      style={{
-        border: "1px solid lightgrey",
-        borderRadius: "5px",
-        padding: "2%",
-        ...style,
-      }}
     >
       {children}
-    </section>
+    </Flex>
   );
 };

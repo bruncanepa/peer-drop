@@ -20,7 +20,6 @@ interface usePeerReceiverProps {
 export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
   const [files, setFiles] = useState<DataFileListItem[]>([]);
   const [room, setRoom] = useState<Room>();
-  const [error, setError] = useState<Error>();
 
   const onReceiveMessage = (peerId: string, msg: PeerMessage) => {
     switch (msg.type) {
@@ -50,10 +49,8 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
     startSession,
     connectToNewPeer,
     sendMessageToServer,
-  } = usePeer({
-    peerType: "RECEIVER",
-    onReceiveMessage,
-  });
+    toastError,
+  } = usePeer({ peerType: "RECEIVER", onReceiveMessage });
 
   useEffect(() => {
     // load on first render only
@@ -63,7 +60,7 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
           await startSession();
           await getRoom();
         } catch (err) {
-          setError(err as Error);
+          toastError(err as Error);
         }
       }
     })();
@@ -75,14 +72,14 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
       "GET_ROOM_REQUESTED",
       { type: "GET_ROOM", data: { roomId } },
       async (message: ServerMessage<SeverMessageDataGetRoomRes>) => {
-        if (message.error) return setError(new Error(message.error));
+        if (message.error) return toastError(new Error(message.error));
         try {
           const room = message.data;
           setRoom(room);
           await connectToNewPeer(room.ownerId);
           await sendMessageToPeer(room.ownerId, { type: "FILES_LIST_REQ" });
         } catch (err) {
-          setError(err as Error);
+          toastError(err as Error);
         }
       }
     );
@@ -106,7 +103,6 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
     room,
     files,
     peers,
-    error,
     activityLogs,
     downloadFileProgressMap: fileProgressMap,
     downloadFiles,

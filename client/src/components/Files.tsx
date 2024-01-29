@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { Text, CloseButton } from "@chakra-ui/react";
+import { Text, CloseButton, Flex } from "@chakra-ui/react";
 import { DataFileListItem } from "libs/peer";
 import { formatBytes } from "utils/file/formatBytes";
 import { Progress } from "./Progress";
@@ -28,14 +28,16 @@ export const Files: FC<FilesProps> = ({
             padding: "1% 0",
           }}
         >
-          <div>
+          <Flex direction="column" justifyContent="center">
             <Text>{file.name}</Text>
             <Text fontSize="8px">{formatBytes(file.size)}</Text>
-          </div>
-          {!!filesProgressMap && !!filesProgressMap[file.id] && (
-            <Progress progress={filesProgressMap[file.id]} />
-          )}
-          <CloseButton onClick={() => onRemoveFile(file)}>X</CloseButton>
+          </Flex>
+          <Flex justifyContent="center" alignItems="center">
+            {!!filesProgressMap && !!filesProgressMap[file.id] && (
+              <Progress progress={filesProgressMap[file.id]} />
+            )}
+            <CloseButton onClick={() => onRemoveFile(file)}>X</CloseButton>
+          </Flex>
         </li>
       ))}
     </ol>

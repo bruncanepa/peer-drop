@@ -1,19 +1,21 @@
 import { FC } from "react";
-import { Text } from "@chakra-ui/react";
+import { FlexProps, Text } from "@chakra-ui/react";
 import { ActivityLog as ActivityLogClass } from "hooks/useActivityLog";
 import { idToShortId } from "utils/id";
 import { Box } from "./common/Box";
 
-interface ActivityLogProps {
+interface ActivityLogProps extends FlexProps {
   items: ActivityLogClass[];
   myId?: string;
 }
 
-export const ActivityLog: FC<ActivityLogProps> = ({ items, myId }) => {
+export const ActivityLog: FC<ActivityLogProps> = ({
+  items,
+  myId,
+  ...props
+}) => {
   return (
-    <Box
-      style={{ display: "flex", flexDirection: "column", overflow: "scroll" }}
-    >
+    <Box direction="column" overflow="scroll" {...props}>
       <h3>Activity Log </h3>
       {!!myId && (
         <Text style={{ fontWeight: "bold", marginBottom: "5%" }}>
