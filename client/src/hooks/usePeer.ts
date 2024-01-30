@@ -49,7 +49,7 @@ const toastDefaultProps: UseToastOptions = { duration: null, isClosable: true };
 export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
   const serverPeerRef = useRef<Peer>();
   const peersRef = useRef<Record<string, DataConnection>>({}); // "We recommend keeping track of connections..." https://peerjs.com/docs/#peerconnections
-  const { progressMap, onProgress } = useMultipleProgress();
+  const { progressMap, onProgress, onReset } = useMultipleProgress();
   const peerIsSender = isSender(peerType);
   useOnTabUnloaded(Boolean(serverPeerRef.current));
   const toast = useToast();
@@ -150,9 +150,6 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
           resolve(id);
         })
         .on("connection", (conn: DataConnection) => {
-          if (Object.keys(peersRef.current).length) {
-            throw Error("receiver only allows 1 connection");
-          }
           const connId = conn.peer;
           peersRef.current = ImmutableRecord.add(
             peersRef.current,
@@ -280,5 +277,6 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
     toastSuccess,
     toastError,
     toastInfo,
+    onResetFileProgess: onReset,
   };
 };

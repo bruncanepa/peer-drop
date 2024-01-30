@@ -20,6 +20,7 @@ interface usePeerReceiverProps {
 export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
   const [files, setFiles] = useState<DataFileListItem[]>([]);
   const [room, setRoom] = useState<Room>();
+  const [downloaded, setDownloaded] = useState(false);
 
   const onReceiveMessage = (peerId: string, msg: PeerMessage) => {
     switch (msg.type) {
@@ -30,6 +31,7 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
       }
 
       case "FILES_DOWNLOAD_RES": {
+        setDownloaded(true);
         const data = msg.data as DataFile;
         return downloadFile(
           data.blob as Blob,
@@ -84,12 +86,14 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
       }
     );
 
-  const downloadFiles = () =>
-    room &&
-    sendMessageToPeer(room.ownerId, {
-      type: "FILES_DOWNLOAD_REQ",
-      data: { files: files.map((f) => f.name) },
-    } as FilesDownloadReq);
+  const downloadFiles = () => {
+    if (room) {
+      sendMessageToPeer(room.ownerId, {
+        type: "FILES_DOWNLOAD_REQ",
+        data: { files: files.map((f) => f.name) },
+      } as FilesDownloadReq);
+    }
+  };
 
   const onRemoveFile = (file: DataFileListItem) =>
     setFiles((fs) =>
@@ -105,6 +109,7 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
     peers,
     activityLogs,
     downloadFileProgressMap: fileProgressMap,
+    downloaded,
     downloadFiles,
     onRemoveFile,
   };

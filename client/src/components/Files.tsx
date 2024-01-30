@@ -8,12 +8,14 @@ interface FilesProps {
   files: DataFileListItem[];
   onRemoveFile: (file: DataFileListItem) => void;
   filesProgressMap?: Record<string, number>;
+  isDisabled?: boolean;
 }
 
 export const Files: FC<FilesProps> = ({
   files,
   onRemoveFile,
   filesProgressMap,
+  isDisabled,
 }) => {
   return (
     <ol style={{ width: "100%", paddingRight: "40px", margin: 0, padding: 0 }}>
@@ -36,7 +38,12 @@ export const Files: FC<FilesProps> = ({
             {!!filesProgressMap && !!filesProgressMap[file.id] && (
               <Progress progress={filesProgressMap[file.id]} />
             )}
-            <CloseButton onClick={() => onRemoveFile(file)}>X</CloseButton>
+            <CloseButton
+              isDisabled={isDisabled}
+              onClick={() => onRemoveFile(file)}
+            >
+              X
+            </CloseButton>
           </Flex>
         </li>
       ))}

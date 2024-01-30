@@ -19,6 +19,7 @@ const Receiver: FC<ReceiverProps> = ({ sharedId: roomId }) => {
     myId,
     activityLogs,
     downloadFileProgressMap,
+    downloaded,
     downloadFiles,
     onRemoveFile,
   } = usePeerReceiver({ roomId });
@@ -35,8 +36,11 @@ const Receiver: FC<ReceiverProps> = ({ sharedId: roomId }) => {
                 files={files}
                 onRemoveFile={onRemoveFile}
                 filesProgressMap={downloadFileProgressMap}
+                isDisabled={downloaded}
               />
-              <Button onClick={downloadFiles}>Download</Button>
+              <Button isDisabled={downloaded} onClick={downloadFiles}>
+                Download
+              </Button>
             </>
           ) : (
             <Text>No files</Text>

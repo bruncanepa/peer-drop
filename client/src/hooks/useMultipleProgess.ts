@@ -12,5 +12,7 @@ export const useMultipleProgress = () => {
     []
   );
 
-  return { progressMap, onProgress };
+  const onReset = useCallback(() => setProgressMap({}), []);
+
+  return { progressMap, onProgress, onReset };
 };
