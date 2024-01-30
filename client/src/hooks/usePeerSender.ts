@@ -26,6 +26,11 @@ export const usePeerSender = () => {
     switch (msg.type) {
       case "FILES_TRANSFER_REQ": {
         const { data } = msg as FilesDownloadReq;
+        toast.info(
+          `Transfer for ${data.files.length} file/s to ${idToShortId(
+            peerId
+          )} started`
+        );
         filesRef.current
           .filter((f) => data.files.includes(f.name))
           .forEach((file, id) => {
@@ -58,6 +63,10 @@ export const usePeerSender = () => {
     }
   };
 
+  const onFileTransferEnd = (peerId?: string) => {
+    toast.success(`Transfer to ${idToShortId(peerId)} success`);
+  };
+
   const {
     myId,
     peers,
@@ -70,9 +79,7 @@ export const usePeerSender = () => {
     peerType: "SENDER",
     filesCount: filesRef.current.length,
     onReceiveMessage,
-    onFileTransferEnd: (peerId?: string) => {
-      toast.success(`Transfer to ${idToShortId(peerId)} success`);
-    },
+    onFileTransferEnd,
   });
 
   const createRoom = async () => {
