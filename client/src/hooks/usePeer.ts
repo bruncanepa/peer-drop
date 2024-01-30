@@ -1,16 +1,17 @@
 import { useRef } from "react";
 import { unpack } from "peerjs-js-binarypack";
+import Peer, {
+  DataConnection,
+  PeerError,
+  PeerErrorType,
+  SocketEventType,
+} from "peerjs";
 import {
   Chunk,
   DataFileProgress,
-  ISeverMessageDataReq,
-  ISeverMessageDataRes,
   PeerMessage,
   PeerMessageType,
-  ServerMessage,
-  ServerMessageType,
-  ServerMessageWrapped,
-} from "libs/peer";
+} from "dto/peer";
 import { ImmutableRecord } from "utils/record";
 import {
   ActivityLogType,
@@ -18,15 +19,17 @@ import {
   useActivityLogs,
 } from "./useActivityLog";
 import { genId, idToShortId } from "utils/id";
-import Peer, {
-  DataConnection,
-  PeerError,
-  PeerErrorType,
-  SocketEventType,
-} from "peerjs";
-import { useOnTabUnloaded } from "dto/useOnTabUnloaded";
+
+import { useOnTabUnloaded } from "hooks/useOnTabUnloaded";
 import { useMultipleProgress } from "./useMultipleProgess";
-import { UseToastOptions, useToast } from "@chakra-ui/react";
+import { useToast } from "./useToast";
+import {
+  ISeverMessageDataReq,
+  ISeverMessageDataRes,
+  ServerMessage,
+  ServerMessageType,
+  ServerMessageWrapped,
+} from "dto/server";
 
 export type OnReceiveMessageFnType = (peerId: string, msg: PeerMessage) => any;
 
@@ -34,38 +37,35 @@ type PeerType = "SENDER" | "RECEIVER";
 
 interface UsePeerProps {
   peerType: PeerType;
+  filesCount: number;
   onReceiveMessage: OnReceiveMessageFnType;
+  onFileTransferEnd: (peerId?: string) => any;
 }
 
 const isSender = (peerType: PeerType) => peerType === "SENDER";
 const isInterestedInMessage = (peerType: PeerType, msgType: PeerMessageType) =>
   (isSender(peerType)
-    ? (["FILES_DOWNLOAD_REQ", "FILES_LIST_REQ"] as PeerMessageType[])
-    : (["FILES_LIST_RES", "FILES_DOWNLOAD_RES"] as PeerMessageType[])
+    ? (["FILES_TRANSFER_REQ", "FILES_LIST_REQ"] as PeerMessageType[])
+    : (["FILES_LIST_RES", "FILES_TRANSFER_RES"] as PeerMessageType[])
   ).includes(msgType);
 
-const toastDefaultProps: UseToastOptions = { duration: null, isClosable: true };
-
-export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
+export const usePeer = ({
+  peerType,
+  filesCount,
+  onReceiveMessage,
+  onFileTransferEnd,
+}: UsePeerProps) => {
   const serverPeerRef = useRef<Peer>();
   const peersRef = useRef<Record<string, DataConnection>>({}); // "We recommend keeping track of connections..." https://peerjs.com/docs/#peerconnections
-  const { progressMap, onProgress, onReset } = useMultipleProgress();
+  const { progressMap, onProgress, onReset } = useMultipleProgress(
+    filesCount,
+    onFileTransferEnd
+  );
   const peerIsSender = isSender(peerType);
   useOnTabUnloaded(Boolean(serverPeerRef.current));
   const toast = useToast();
 
-  const toastSuccess = (title: string) =>
-    toast({ ...toastDefaultProps, title, status: "error" });
-  const toastInfo = (title: string) =>
-    toast({ ...toastDefaultProps, title, status: "info" });
-  const toastError = (err: Error) =>
-    toast({
-      ...toastDefaultProps,
-      title: err.message || "An error ocurred",
-      status: "error",
-    });
-
-  const { activityLogs, addActivityLog } = useActivityLogs(toastError);
+  const { activityLogs, addActivityLog } = useActivityLogs(toast.error);
 
   const _onReceiveMessage: OnReceiveMessageFnType = (
     peerId: string,
@@ -73,9 +73,11 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
   ) => {
     if (isInterestedInMessage(peerType, msg.type)) {
       onReceiveMessage(peerId, msg);
-    } else if (msg.type === "FILES_DOWNLOAD_PROGRESS") {
+    } else if (msg.type === "FILES_TRANSFER_PROGRESS") {
       const msgData = msg.data as DataFileProgress;
       onProgress(msgData.id, msgData.progress, msgData.total);
+    } else if (msg.type === "FILES_TRANSFER_END") {
+      onFileTransferEnd(peerId);
     }
     addActivityLog({ type: msg.type, peerId, data: msg.data });
   };
@@ -104,7 +106,7 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
                   const progress = isPrevLastChunk ? chunk.total : chunk.n;
                   onProgress(`${chunk.__peerData}`, progress, chunk.total);
                   // const peerMsg: PeerMessage = {
-                  //   type: "FILES_DOWNLOAD_PROGRESS",
+                  //   type: "FILES_TRANSFER_PROGRESS",
                   //   data: {
                   //     id: `${chunk.__peerData}`,
                   //     progress,
@@ -123,9 +125,11 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
       })
       .on("close", () => {
         peersRef.current = ImmutableRecord.remove(peersRef.current, peerId);
+        toast.info(`Disconnected from ${idToShortId(peerId)}`);
         addActivityLog({ peerId, type: "CONNECTION_CLOSE" });
       })
       .on("error", (err: PeerError<string>) => {
+        toast.error(err);
         if (resultCallback) resultCallback(err);
         addActivityLog({ peerId, type: "LISTEN_CONNECTION_ERROR", data: err });
       });
@@ -160,6 +164,7 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
         })
         .on("error", (err: PeerError<string>) => {
           // TODO https://peerjs.com/docs/#peeron-error
+          toast.error(err);
           if (err.type === PeerErrorType.Network) {
             addActivityLog({ type: "DISCONNECTED_FROM_SERVER", data: err });
           } else {
@@ -175,12 +180,14 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
       if (peersRef.current[peerId]) {
         const errMsg = "Connection existed";
         addActivityLog({ peerId, type: "NEW_CONNECTION_ERROR", data: errMsg });
+        toast.error(new Error(errMsg));
         return reject(new Error(errMsg));
       }
       const conn = serverPeerRef.current?.connect(peerId, { reliable: true });
       if (!conn) {
         const errMsg = "Connection can't be established";
         addActivityLog({ peerId, type: "NEW_CONNECTION_ERROR", data: errMsg });
+        toast.error(new Error(errMsg));
         return reject(new Error(errMsg));
       }
       addActivityLog({ peerId, type: "NEW_CONNECTION_OK" });
@@ -189,29 +196,28 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
       );
     });
 
-  const sendMessageToPeer = (peerId: string, msg: PeerMessage): Promise<void> =>
-    new Promise((resolve, reject) => {
-      try {
-        addActivityLog({ peerId, type: msg.type, data: msg.data });
-        const conn = peersRef.current[peerId];
-        if (!conn) {
-          throw new Error(`Connection ${idToShortId(peerId)} disconnected`);
-        }
-        conn.send(msg);
-        addActivityLog({
-          peerId,
-          type: toActivityLogType(msg.type, "OK"),
-        });
-        resolve();
-      } catch (err) {
-        addActivityLog({
-          peerId,
-          type: toActivityLogType(msg.type, "ERROR"),
-          data: err,
-        });
-        reject(err);
-      }
-    });
+  const sendMessageToPeer = (peerId: string, msg: PeerMessage) => {
+    addActivityLog({ peerId, type: msg.type, data: msg.data });
+    const conn = peersRef.current[peerId];
+    if (!conn) {
+      toast.error(new Error(`Connection ${idToShortId(peerId)} disconnected`));
+      return;
+    }
+    try {
+      conn.send(msg);
+      addActivityLog({
+        peerId,
+        type: toActivityLogType(msg.type, "OK"),
+      });
+    } catch (err) {
+      toast.error(err as Error, "error sending message to room");
+      addActivityLog({
+        peerId,
+        type: toActivityLogType(msg.type, "ERROR"),
+        data: err,
+      });
+    }
+  };
 
   const sendMessageToServer = <
     T extends ISeverMessageDataReq,
@@ -223,10 +229,11 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
   ) => {
     try {
       addActivityLog({ type: messageType });
-      listenToServerEvent(payload.type, onServerEvent);
+      listenToServerEvents(payload.type, onServerEvent);
       serverPeerRef.current?.socket.send({ type: "PEER_DROP", payload });
       addActivityLog({ type: toActivityLogType(messageType, "OK") });
     } catch (err) {
+      toast.error(err as Error, "error sending message to server");
       addActivityLog({
         type: toActivityLogType(messageType, "ERROR"),
         data: err,
@@ -234,7 +241,7 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
     }
   };
 
-  const listenToServerEvent = <T extends ISeverMessageDataRes>(
+  const listenToServerEvents = <T extends ISeverMessageDataRes>(
     messageType: ServerMessageType,
     onServerEvent: (d: ServerMessage<T>) => any
   ) => {
@@ -273,10 +280,7 @@ export const usePeer = ({ peerType, onReceiveMessage }: UsePeerProps) => {
     sendMessageToPeer,
     addActivityLog,
     sendMessageToServer,
-    listenToServerEvents: listenToServerEvent,
-    toastSuccess,
-    toastError,
-    toastInfo,
+    listenToServerEvents,
     onResetFileProgess: onReset,
   };
 };

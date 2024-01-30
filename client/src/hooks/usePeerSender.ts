@@ -1,32 +1,36 @@
 import { ChangeEvent, useState } from "react";
 import { usePeer } from "./usePeer";
-import { Room } from "dto/room";
+import { Room } from "dto/server";
 import {
   DataFile,
   DataFileList,
   DataFileListItem,
   FilesDownloadReq,
   PeerMessage,
+} from "dto/peer";
+import { useUpdatableRef } from "./useUpdatableRef";
+import { useToast } from "./useToast";
+import {
   ServerMessage,
   SeverMessageDataCreateRoomReq,
   SeverMessageDataCreateRoomRes,
-} from "libs/peer";
-import { Logger } from "utils/logger";
-import { useUpdatableRef } from "./useUpdatableRef";
+} from "dto/server";
+import { idToShortId } from "utils/id";
 
 export const usePeerSender = () => {
   const [filesRef, updateFilesRef] = useUpdatableRef<File[]>([]);
   const [room, setRoom] = useState<Room>();
+  const toast = useToast();
 
   const onReceiveMessage = (peerId: string, msg: PeerMessage) => {
     switch (msg.type) {
-      case "FILES_DOWNLOAD_REQ": {
+      case "FILES_TRANSFER_REQ": {
         const { data } = msg as FilesDownloadReq;
         filesRef.current
           .filter((f) => data.files.includes(f.name))
           .forEach((file, id) => {
             sendMessageToPeer(peerId, {
-              type: "FILES_DOWNLOAD_RES",
+              type: "FILES_TRANSFER_RES",
               data: {
                 blob: new Blob([file], { type: file.type }),
                 name: file.name,
@@ -62,7 +66,14 @@ export const usePeerSender = () => {
     startSession,
     addActivityLog,
     sendMessageToServer,
-  } = usePeer({ peerType: "SENDER", onReceiveMessage });
+  } = usePeer({
+    peerType: "SENDER",
+    filesCount: filesRef.current.length,
+    onReceiveMessage,
+    onFileTransferEnd: (peerId?: string) => {
+      toast.success(`Transfer to ${idToShortId(peerId)} success`);
+    },
+  });
 
   const createRoom = async () => {
     try {
@@ -77,7 +88,7 @@ export const usePeerSender = () => {
           setRoom(message.data)
       );
     } catch (err) {
-      Logger.error("couldn't create file session", err);
+      toast.error(err as Error, "couldn't create room");
     }
   };
 
@@ -100,7 +111,7 @@ export const usePeerSender = () => {
     myId,
     peers,
     files: filesRef.current,
-    fileSession: room,
+    room,
     activityLogs,
     startSession,
     onSelectFiles,

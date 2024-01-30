@@ -1,17 +1,20 @@
 import { useEffect, useState } from "react";
 import { usePeer } from "./usePeer";
-import { Room } from "dto/room";
+import { Room } from "dto/server";
 import {
   DataFile,
   DataFileList,
   DataFileListItem,
   FilesDownloadReq,
   PeerMessage,
+} from "dto/peer";
+import { downloadFile } from "utils/file/download";
+import { useToast } from "./useToast";
+import {
   ServerMessage,
   SeverMessageDataGetRoomReq,
   SeverMessageDataGetRoomRes,
-} from "libs/peer";
-import { downloadFile } from "utils/file/download";
+} from "dto/server";
 
 interface usePeerReceiverProps {
   roomId: string;
@@ -21,6 +24,7 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
   const [files, setFiles] = useState<DataFileListItem[]>([]);
   const [room, setRoom] = useState<Room>();
   const [downloaded, setDownloaded] = useState(false);
+  const toast = useToast();
 
   const onReceiveMessage = (peerId: string, msg: PeerMessage) => {
     switch (msg.type) {
@@ -30,7 +34,7 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
         return;
       }
 
-      case "FILES_DOWNLOAD_RES": {
+      case "FILES_TRANSFER_RES": {
         setDownloaded(true);
         const data = msg.data as DataFile;
         return downloadFile(
@@ -42,6 +46,12 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
     }
   };
 
+  const onFileTransferEnd = () => {
+    const msg: PeerMessage = { type: "FILES_TRANSFER_END" };
+    if (room) sendMessageToPeer(room.ownerId, msg);
+    toast.success(`Transfer success`);
+  };
+
   const {
     myId,
     peers,
@@ -51,8 +61,12 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
     startSession,
     connectToNewPeer,
     sendMessageToServer,
-    toastError,
-  } = usePeer({ peerType: "RECEIVER", onReceiveMessage });
+  } = usePeer({
+    peerType: "RECEIVER",
+    filesCount: files.length,
+    onReceiveMessage,
+    onFileTransferEnd,
+  });
 
   useEffect(() => {
     // load on first render only
@@ -62,7 +76,7 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
           await startSession();
           await getRoom();
         } catch (err) {
-          toastError(err as Error);
+          toast.error(err as Error, "error getting room");
         }
       }
     })();
@@ -74,22 +88,18 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
       "GET_ROOM_REQUESTED",
       { type: "GET_ROOM", data: { roomId } },
       async (message: ServerMessage<SeverMessageDataGetRoomRes>) => {
-        if (message.error) return toastError(new Error(message.error));
-        try {
-          const room = message.data;
-          setRoom(room);
-          await connectToNewPeer(room.ownerId);
-          await sendMessageToPeer(room.ownerId, { type: "FILES_LIST_REQ" });
-        } catch (err) {
-          toastError(err as Error);
-        }
+        if (message.error) return toast.error(new Error(message.error));
+        const room = message.data;
+        setRoom(room);
+        await connectToNewPeer(room.ownerId);
+        await sendMessageToPeer(room.ownerId, { type: "FILES_LIST_REQ" });
       }
     );
 
   const downloadFiles = () => {
     if (room) {
       sendMessageToPeer(room.ownerId, {
-        type: "FILES_DOWNLOAD_REQ",
+        type: "FILES_TRANSFER_REQ",
         data: { files: files.map((f) => f.name) },
       } as FilesDownloadReq);
     }

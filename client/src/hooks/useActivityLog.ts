@@ -1,4 +1,4 @@
-import { PeerMessageType } from "libs/peer";
+import { PeerMessageType } from "dto/peer";
 import { useState } from "react";
 import { ImmutableArray } from "utils/array";
 
@@ -53,7 +53,7 @@ export const useActivityLogs = (toastError: (e: Error) => any) => {
     if (log.type.endsWith("ERROR")) toastError(new Error(log.type));
 
     setActivityLogs((logs) =>
-      log.type === "FILES_DOWNLOAD_PROGRESS"
+      log.type === "FILES_TRANSFER_PROGRESS"
         ? logs
         : ImmutableArray.unshiftUnique(
             logs,

@@ -5,7 +5,7 @@ import { usePeerSender } from "hooks/usePeerSender";
 import { ActivityLog } from "./ActivityLog";
 import { Files } from "./Files";
 import { Box } from "./common/Box";
-import { DataFileListItem } from "libs/peer";
+import { DataFileListItem } from "dto/peer";
 import { FileInput } from "./common/FileInput";
 import { Shell } from "./common/Shell";
 
@@ -17,6 +17,7 @@ const Sender: FC<SenderProps> = () => {
     files,
     peers,
     activityLogs,
+    room,
     onSelectFiles,
     copyShareLink,
     onRemoveFile,
@@ -35,7 +36,7 @@ const Sender: FC<SenderProps> = () => {
         <Flex width="100%" justifyContent="space-between">
           <FileInput onSelectFiles={onSelectFiles} />
 
-          <Button isDisabled={!Boolean(files?.length)} onClick={copyShareLink}>
+          <Button isDisabled={!Boolean(room)} onClick={copyShareLink}>
             Copy room's link to share
           </Button>
         </Flex>

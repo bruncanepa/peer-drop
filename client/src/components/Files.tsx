@@ -1,6 +1,6 @@
 import { FC } from "react";
 import { Text, CloseButton, Flex } from "@chakra-ui/react";
-import { DataFileListItem } from "libs/peer";
+import { DataFileListItem } from "dto/peer";
 import { formatBytes } from "utils/file/formatBytes";
 import { Progress } from "./Progress";
 
