@@ -1,4 +1,4 @@
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useRef, useState } from "react";
 import { usePeer } from "./usePeer";
 import { Room } from "dto/server";
 import {
@@ -19,8 +19,14 @@ import { idToShortId } from "utils/id";
 
 export const usePeerSender = () => {
   const [filesRef, updateFilesRef] = useUpdatableRef<File[]>([]);
+  const filesSendingRef = useRef<Record<string, File[]>>({}); // copy sending files, in case owner changes serving files
   const [room, setRoom] = useState<Room>();
   const toast = useToast();
+
+  const onFileTransferEnd = (peerId?: string) => {
+    toast.success(`Transfer to ${idToShortId(peerId)} success`);
+    if (peerId) delete filesSendingRef.current[peerId];
+  };
 
   const onReceiveMessage = (peerId: string, msg: PeerMessage) => {
     switch (msg.type) {
@@ -31,9 +37,16 @@ export const usePeerSender = () => {
             peerId
           )} started`
         );
+        delete filesSendingRef.current[peerId];
         filesRef.current
           .filter((f) => data.files.includes(f.name))
           .forEach((file, id) => {
+            if (filesSendingRef.current[peerId]) {
+              filesSendingRef.current[peerId].push(file);
+            } else {
+              filesSendingRef.current[peerId] = [file];
+            }
+
             sendMessageToPeer(peerId, {
               type: "FILES_TRANSFER_RES",
               data: {
@@ -61,10 +74,6 @@ export const usePeerSender = () => {
         });
       }
     }
-  };
-
-  const onFileTransferEnd = (peerId?: string) => {
-    toast.success(`Transfer to ${idToShortId(peerId)} success`);
   };
 
   const {
