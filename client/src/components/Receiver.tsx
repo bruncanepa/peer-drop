@@ -1,6 +1,5 @@
 import { FC } from "react";
 import { Button, Text } from "@chakra-ui/react";
-import { Peers } from "./Peers";
 import { usePeerReceiver } from "hooks/usePeerReceiver";
 import { ActivityLog } from "./ActivityLog";
 import { Box } from "./common/Box";
@@ -15,7 +14,6 @@ const Receiver: FC<ReceiverProps> = ({ sharedId: roomId }) => {
   const {
     files,
     room,
-    peers,
     myId,
     activityLogs,
     downloadFileProgressMap,
@@ -45,8 +43,6 @@ const Receiver: FC<ReceiverProps> = ({ sharedId: roomId }) => {
           ) : (
             <Text>No files</Text>
           )}
-
-          <Peers items={peers} />
         </Box>
       ) : (
         <Text>Loading...</Text>
