@@ -1,4 +1,4 @@
-import { ChangeEvent, useRef, useState } from "react";
+import { ChangeEvent, useState } from "react";
 import { usePeer } from "./usePeer";
 import { Room } from "dto/server";
 import {
@@ -15,63 +15,62 @@ import {
   SeverMessageDataCreateRoomReq,
   SeverMessageDataCreateRoomRes,
 } from "dto/server";
-import { idToShortId } from "utils/id";
+import { ImmutableArray } from "utils/array";
+import { genUUID } from "utils/id";
 
 export const usePeerSender = () => {
-  const [filesRef, updateFilesRef] = useUpdatableRef<File[]>([]);
-  const filesSendingRef = useRef<Record<string, File[]>>({}); // copy sending files, in case owner changes serving files
-  const [room, setRoom] = useState<Room>();
   const toast = useToast();
+  const [filesRef, updateFilesRef] = useUpdatableRef<
+    { id: string; file: File }[]
+  >([]);
+  const [room, setRoom] = useState<Room>();
 
   const onFileTransferEnd = (peerId?: string) => {
-    toast.success(`Transfer to ${idToShortId(peerId)} success`);
-    if (peerId) delete filesSendingRef.current[peerId];
+    toast.success(
+      `Transfer to '${peersAliasesRef.current[peerId || ""]}' success`
+    );
   };
+
+  const _sendFileListRes = (...peerIds: string[]) =>
+    peerIds.map((peerId) =>
+      sendMessageToPeer(peerId, {
+        type: "FILES_LIST_RES",
+        data: {
+          items: filesRef.current.map(({ file, id }) => ({
+            id,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+          })),
+        } as DataFileList,
+      })
+    );
 
   const onReceiveMessage = (peerId: string, msg: PeerMessage) => {
     switch (msg.type) {
       case "FILES_TRANSFER_REQ": {
         const { data } = msg as FilesDownloadReq;
         toast.info(
-          `Transfer for ${data.files.length} file/s to ${idToShortId(
-            peerId
-          )} started`
+          `Transfer for ${data.files.length} file/s to ${peersAliasesRef.current[peerId]} started`
         );
-        delete filesSendingRef.current[peerId];
-        filesRef.current
-          .filter((f) => data.files.includes(f.name))
-          .forEach((file, id) => {
-            if (filesSendingRef.current[peerId]) {
-              filesSendingRef.current[peerId].push(file);
-            } else {
-              filesSendingRef.current[peerId] = [file];
-            }
-
+        Object.values(filesRef.current)
+          .filter(({ id }) => data.files.includes(id))
+          .forEach(({ file, id }) => {
             sendMessageToPeer(peerId, {
               type: "FILES_TRANSFER_RES",
               data: {
+                id,
                 blob: new Blob([file], { type: file.type }),
                 name: file.name,
                 type: file.type,
                 size: file.size,
-                id: `${id + 1}`,
               } as DataFile,
             });
           });
         return;
       }
       case "FILES_LIST_REQ": {
-        return sendMessageToPeer(peerId, {
-          type: "FILES_LIST_RES",
-          data: {
-            items: filesRef.current.map((f, i) => ({
-              name: f.name,
-              size: f.size,
-              type: f.type,
-              id: `${i + 1}`,
-            })),
-          } as DataFileList,
-        });
+        return _sendFileListRes(peerId);
       }
     }
   };
@@ -80,16 +79,11 @@ export const usePeerSender = () => {
     myId,
     peers,
     activityLogs,
+    peersAliasesRef,
     sendMessageToPeer,
     startSession,
-    addActivityLog,
     sendMessageToServer,
-  } = usePeer({
-    peerType: "SENDER",
-    filesCount: filesRef.current.length,
-    onReceiveMessage,
-    onFileTransferEnd,
-  });
+  } = usePeer({ peerType: "SENDER", onReceiveMessage, onFileTransferEnd });
 
   const createRoom = async () => {
     try {
@@ -109,18 +103,43 @@ export const usePeerSender = () => {
   };
 
   const onSelectFiles = (event: ChangeEvent<HTMLInputElement>) => {
-    updateFilesRef(Array.from(event.target.files || []));
-    createRoom();
+    if (event.target.files?.length) {
+      updateFilesRef(
+        ImmutableArray.push(
+          filesRef.current,
+          ...Array.from(event.target.files).map((file) => ({
+            id: genUUID(),
+            file,
+          }))
+        )
+      );
+      if (room) {
+        _sendFileListRes(...peers);
+      } else {
+        createRoom();
+      }
+    }
   };
 
-  const copyShareLink = () =>
-    room &&
-    navigator.clipboard
-      .writeText(`${window.location.origin}/${room.id}`)
-      .then(() => addActivityLog({ type: "COPY_SHARE_URL" }));
+  const onRemoveFile = (fileRemoved: DataFileListItem) => {
+    updateFilesRef(
+      ImmutableArray.remove(
+        filesRef.current,
+        (file) => file.id !== fileRemoved.id
+      )
+    );
+    _sendFileListRes(...peers);
+  };
 
-  const onRemoveFile = (file: DataFileListItem) => {
-    updateFilesRef(filesRef.current.filter((f) => f.name !== file.name));
+  const copyShareLink = () => {
+    if (room) {
+      navigator.clipboard
+        .writeText(`${window.location.origin}/${room.id}`)
+        .then(() => toast.info("Room's link copied into clipboard!"))
+        .catch((err) =>
+          toast.error(err, "Couldn't copy link. Try again please!")
+        );
+    }
   };
 
   return {
@@ -129,6 +148,7 @@ export const usePeerSender = () => {
     files: filesRef.current,
     room,
     activityLogs,
+    peersAliases: peersAliasesRef.current,
     startSession,
     onSelectFiles,
     copyShareLink,

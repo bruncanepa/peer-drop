@@ -1,25 +1,24 @@
 import { FC } from "react";
-import { FlexProps, Text } from "@chakra-ui/react";
+import { FlexProps, Heading, Text } from "@chakra-ui/react";
 import { ActivityLog as ActivityLogClass } from "hooks/useActivityLog";
-import { idToShortId } from "utils/id";
 import { Box } from "./common/Box";
 
 interface ActivityLogProps extends FlexProps {
   items: ActivityLogClass[];
-  myId?: string;
+  myAlias?: string;
 }
 
 export const ActivityLog: FC<ActivityLogProps> = ({
   items,
-  myId,
+  myAlias,
   ...props
 }) => {
   return (
     <Box direction="column" overflow="scroll" {...props}>
-      <h3>Activity Log </h3>
-      {!!myId && (
+      <Heading as="h3">Activity</Heading>
+      {!!myAlias && (
         <Text style={{ fontWeight: "bold", marginBottom: "5%" }}>
-          You are: {idToShortId(myId)}
+          You are: {myAlias}
         </Text>
       )}
       {items.length ? (
@@ -38,9 +37,7 @@ export const ActivityLog: FC<ActivityLogProps> = ({
                 key={log.date?.toISOString() + log.type}
                 style={{ borderBottom: "1px solid lightgrey", padding: "2% 0" }}
               >
-                <th>
-                  {log.peerId === myId ? "Me" : idToShortId(log.peerId) || "Me"}
-                </th>
+                <th>{log.alias}</th>
                 <th>{log.type}</th>
                 <th>{log.date?.toISOString()}</th>
                 <th>{log.data ? JSON.stringify(log.data) : "-"}</th>

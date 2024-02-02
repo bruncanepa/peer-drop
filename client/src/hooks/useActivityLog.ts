@@ -1,6 +1,7 @@
 import { PeerMessageType } from "dto/peer";
-import { useState } from "react";
+import { MutableRefObject, useState } from "react";
 import { ImmutableArray } from "utils/array";
+import { useToast } from "./useToast";
 
 type ActivityLogTypeStatus = "OK" | "REQUESTED" | "ERROR";
 const validActivityLogTypeStatus: ActivityLogTypeStatus[] = [
@@ -27,7 +28,6 @@ export type ActivityLogType =
   | "GET_ROOM_REQUESTED" // Receiver
   | "GET_ROOM_OK" // Receiver
   | "GET_ROOM_ERROR" // Receiver
-  | "COPY_SHARE_URL" // Sender
   | "DISCONNECTED_FROM_SERVER"; // Both;
 
 export const toActivityLogType = (
@@ -44,13 +44,17 @@ export interface ActivityLog {
   data?: any;
   peerId?: string;
   id?: string;
+  alias?: string;
 }
 
-export const useActivityLogs = (toastError: (e: Error) => any) => {
+export const useActivityLogs = (
+  peersAliases: MutableRefObject<Record<string, string>>
+) => {
+  const toast = useToast();
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
 
   const add = (log: ActivityLog) => {
-    if (log.type.endsWith("ERROR")) toastError(new Error(log.type));
+    if (log.type.endsWith("ERROR")) toast.error(new Error(log.type));
 
     setActivityLogs((logs) =>
       log.type === "FILES_TRANSFER_PROGRESS"
@@ -62,6 +66,7 @@ export const useActivityLogs = (toastError: (e: Error) => any) => {
               date: new Date(),
               id: new Date().toISOString() + log.type,
               data: undefined, // TODO
+              alias: log.peerId ? peersAliases.current[log.peerId] || "Owner" : "Server",
             },
             "id"
           )

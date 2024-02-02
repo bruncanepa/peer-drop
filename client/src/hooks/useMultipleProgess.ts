@@ -28,7 +28,5 @@ export const useMultipleProgress = (quantity: number, onEnd?: () => any) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progressMap, quantity]);
 
-  console.log(progressMap);
-
   return { progressMap, onProgress, onReset };
 };

@@ -5,6 +5,7 @@ export type PeerMessageType =
   | "FILES_TRANSFER_RES"
   | "FILES_TRANSFER_PROGRESS"
   | "FILES_TRANSFER_END"
+  | "SET_PEER_ALIAS"
   | "PEER_DROP";
 
 export interface IData {}
@@ -23,13 +24,15 @@ export interface DataFileProgress extends IData {
   total: number;
 }
 
-export type DataFileListItem = Omit<DataFile, "blob">;
+export interface DataFileListItem extends Omit<DataFile, "blob"> {
+  selected?: boolean;
+}
 
 export interface DataFileList extends IData {
   items: DataFileListItem[];
 }
 
-export interface PeerMessage {
+export interface PeerMessage extends Record<string, any> {
   type: PeerMessageType;
   data?: IData;
 }
@@ -41,9 +44,16 @@ export interface FilesDownloadReq extends PeerMessage {
 
 export type OnReceiveMessageFnType = (peerId: string, msg: PeerMessage) => any;
 
+export interface PeerAliasReq extends IData {
+  alias: string;
+}
+
 export type Chunk = {
+  // from PeerJS
   __peerData: number;
   n: number;
   total: number;
   data: ArrayBuffer;
 };
+
+export const PEERJS_CHUNK_SIZE = 16300; // taken from lib/dataconnection/BufferedConnection/binaryPackChunker.ts

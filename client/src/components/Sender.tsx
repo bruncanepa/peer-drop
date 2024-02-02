@@ -16,6 +16,7 @@ const Sender: FC<SenderProps> = () => {
     myId,
     files,
     peers,
+    peersAliases,
     activityLogs,
     room,
     onSelectFiles,
@@ -23,11 +24,16 @@ const Sender: FC<SenderProps> = () => {
     onRemoveFile,
   } = usePeerSender();
 
-  const _files: DataFileListItem[] = files.map((f, i) => ({
-    id: `${i + 1}`,
-    name: f.name,
-    size: f.size,
-    type: f.type,
+  const _files: DataFileListItem[] = files.map(({ id, file }) => ({
+    id,
+    name: file.name,
+    size: file.size,
+    type: file.type,
+  }));
+
+  const peersItems = peers.map((peerId) => ({
+    id: peerId,
+    alias: peersAliases[peerId],
   }));
 
   return (
@@ -41,12 +47,12 @@ const Sender: FC<SenderProps> = () => {
           </Button>
         </Flex>
 
-        <Files files={_files} onRemoveFile={onRemoveFile} />
+        <Files files={_files} onClickItem={onRemoveFile} itemType="removable" />
 
-        {!!peers.length && <Peers items={peers} />}
+        {!!peersItems.length && <Peers items={peersItems} />}
       </Box>
 
-      <ActivityLog width="100%" items={activityLogs} myId={myId} flex={1} />
+      <ActivityLog width="100%" items={activityLogs} flex={1} />
     </Shell>
   );
 };
