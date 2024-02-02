@@ -162,9 +162,15 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
     }
   };
 
-  const onSelectFile = (file: DataFileListItem) =>
+  const onSelectFile = (files: DataFileListItem[], selectAllValue?: boolean) =>
     setFiles((fs) =>
-      ImmutableArray.update(fs, { ...file, selected: !file.selected }, "id")
+      files.length === 1
+        ? ImmutableArray.update(
+            fs,
+            { ...files[0], selected: !files[0].selected },
+            "id"
+          )
+        : files.map((f) => ({ ...f, selected: selectAllValue }))
     );
 
   const roomOnwerPeer = peers.length ? peers[0] : undefined;

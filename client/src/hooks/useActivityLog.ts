@@ -55,7 +55,7 @@ export const useActivityLogs = (
 
   const add = (log: ActivityLog) => {
     if (log.type.endsWith("ERROR")) toast.error(new Error(log.type));
-
+    const aliases = peersAliases.current; // get reference now, as setActivityLogs callback is async
     setActivityLogs((logs) =>
       log.type === "FILES_TRANSFER_PROGRESS"
         ? logs
@@ -66,7 +66,7 @@ export const useActivityLogs = (
               date: new Date(),
               id: new Date().toISOString() + log.type,
               data: undefined, // TODO
-              alias: log.peerId ? peersAliases.current[log.peerId] || "Owner" : "Server",
+              alias: log.peerId ? aliases[log.peerId] || "Owner" : "Server",
             },
             "id"
           )

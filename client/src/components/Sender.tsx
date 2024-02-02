@@ -13,7 +13,6 @@ interface SenderProps {}
 
 const Sender: FC<SenderProps> = () => {
   const {
-    myId,
     files,
     peers,
     peersAliases,

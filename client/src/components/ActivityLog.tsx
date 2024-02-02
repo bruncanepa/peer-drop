@@ -18,7 +18,7 @@ export const ActivityLog: FC<ActivityLogProps> = ({
       <Heading as="h3">Activity</Heading>
       {!!myAlias && (
         <Text style={{ fontWeight: "bold", marginBottom: "5%" }}>
-          You are: {myAlias}
+          You are: '{myAlias}'
         </Text>
       )}
       {items.length ? (

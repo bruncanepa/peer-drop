@@ -65,28 +65,14 @@ const Receiver: FC<ReceiverProps> = ({ sharedId: roomId }) => {
       {Boolean(room) ? (
         <Box flex={1} flexDirection="column">
           <Heading as="h3">Files</Heading>
-
-          {files.length ? (
-            <>
-              <Button
-                isDisabled={
-                  downloadButtonClicked || !files.some((f) => f.selected)
-                }
-                onClick={onDownload}
-              >
-                Download
-              </Button>
-              <Files
-                files={files}
-                onClickItem={onSelectFile}
-                filesProgressMap={downloadFileProgressMap}
-                isDisabled={downloadButtonClicked}
-                itemType="checkbox"
-              />
-            </>
-          ) : (
-            <Text>No files</Text>
-          )}
+          <Files
+            files={files}
+            onClickItem={onSelectFile}
+            filesProgressMap={downloadFileProgressMap}
+            isDisabled={downloadButtonClicked}
+            itemType="checkbox"
+            onDownload={onDownload}
+          />
         </Box>
       ) : (
         <Text>Loading...</Text>

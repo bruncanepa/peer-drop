@@ -53,12 +53,12 @@ export const usePeer = ({
 }: UsePeerProps) => {
   const toast = useToast();
   const peerIsSender = isSender(peerType);
-  const serverPeerRef = useRef<Peer>();
+  const myPeerRef = useRef<Peer>();
   const peersRef = useRef<Record<string, DataConnection>>({}); // "We recommend keeping track of connections..." https://peerjs.com/docs/#peerconnections
   const [peersAliasesRef, setPeersAliasesRef] = useUpdatableRef<
     Record<string, string>
   >({});
-  useOnTabUnloaded(Boolean(serverPeerRef.current));
+  useOnTabUnloaded(Boolean(myPeerRef.current));
 
   const { activityLogs, addActivityLog } = useActivityLogs(peersAliasesRef);
 
@@ -112,8 +112,8 @@ export const usePeer = ({
     const _onClose = () => {
       if (peersRef.current[peerId]) {
         toast.info(`Disconnected from ${peersAliasesRef.current[peerId]}`);
+        addActivityLog({ peerId, type: "CONNECTION_CLOSE" }); // before _updatePeers
         _updatePeers("remove", peerId, conn);
-        addActivityLog({ peerId, type: "CONNECTION_CLOSE" });
       }
     };
     conn
@@ -133,15 +133,15 @@ export const usePeer = ({
         if (state === "disconnected") _onClose();
       })
       .on("error", (err: PeerError<string>) => {
+        addActivityLog({ peerId, type: "LISTEN_CONNECTION_ERROR", data: err });
         toast.error(err);
         if (resultCallback) resultCallback(err);
-        addActivityLog({ peerId, type: "LISTEN_CONNECTION_ERROR", data: err });
       });
   };
 
   const startSession = (): Promise<string> =>
     new Promise<string>((resolve, reject) => {
-      serverPeerRef.current = new Peer(genPeerId(), {
+      myPeerRef.current = new Peer(genPeerId(), {
         host: "127.0.0.1",
         port: 8081,
         path: "/sockets",
@@ -149,7 +149,7 @@ export const usePeer = ({
         secure: false,
       });
       addActivityLog({ type: "CREATE_SESSION_REQUESTED" });
-      serverPeerRef.current
+      myPeerRef.current
         .on("open", (id: string) => {
           addActivityLog({ type: "CREATE_SESSION_OK" });
           resolve(id);
@@ -180,7 +180,7 @@ export const usePeer = ({
       if (peersRef.current[peerId]) {
         peersRef.current[peerId].close();
       }
-      const conn = serverPeerRef.current?.connect(peerId, { reliable: true });
+      const conn = myPeerRef.current?.connect(peerId, { reliable: true });
       if (!conn) {
         const errMsg = "Connection can't be established";
         addActivityLog({ peerId, type: "NEW_CONNECTION_ERROR", data: errMsg });
@@ -212,12 +212,12 @@ export const usePeer = ({
         type: toActivityLogType(msg.type, "OK"),
       });
     } catch (err) {
-      toast.error(err as Error, "error sending message to room");
       addActivityLog({
         peerId,
         type: toActivityLogType(msg.type, "ERROR"),
         data: err,
       });
+      toast.error(err as Error, "error sending message to room");
     }
   };
 
@@ -232,7 +232,7 @@ export const usePeer = ({
     try {
       addActivityLog({ type: messageType });
       listenToServerEvents(payload.type, onServerEvent);
-      serverPeerRef.current?.socket.send({ type: "PEER_DROP", payload });
+      myPeerRef.current?.socket.send({ type: "PEER_DROP", payload });
       addActivityLog({ type: toActivityLogType(messageType, "OK") });
     } catch (err) {
       toast.error(err as Error, "error sending message to server");
@@ -247,7 +247,7 @@ export const usePeer = ({
     messageType: ServerMessageType,
     onServerEvent: (d: ServerMessage<T>) => any
   ) => {
-    serverPeerRef.current?.socket?.once(
+    myPeerRef.current?.socket?.once(
       SocketEventType.Message,
       (message: ServerMessageWrapped<T>) => {
         if (message.type === "PEER_DROP") {
@@ -273,7 +273,7 @@ export const usePeer = ({
   };
 
   return {
-    myId: serverPeerRef.current?.id || "",
+    myId: myPeerRef.current?.id || "",
     peers: Object.keys(peersRef.current).map((p) => peersRef.current[p].peer),
     peersAliasesRef,
     activityLogs,

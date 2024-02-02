@@ -121,11 +121,11 @@ export const usePeerSender = () => {
     }
   };
 
-  const onRemoveFile = (fileRemoved: DataFileListItem) => {
+  const onRemoveFile = (fileRemoved: DataFileListItem[]) => {
     updateFilesRef(
       ImmutableArray.remove(
         filesRef.current,
-        (file) => file.id !== fileRemoved.id
+        (file) => file.id !== fileRemoved[0].id
       )
     );
     _sendFileListRes(...peers);

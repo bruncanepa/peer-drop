@@ -16,6 +16,7 @@ export const useToast = () => {
   const error = (err: Error, title?: string, options: UseToastOptions = {}) =>
     toast({
       ...mergeOptions(options),
+      duration: null,
       title: err.message
         ? `${title + " "}${err.message}`
         : title || "An error ocurred",
