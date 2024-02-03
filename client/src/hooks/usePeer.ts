@@ -145,7 +145,7 @@ export const usePeer = ({
         host: "127.0.0.1",
         port: 8081,
         path: "/sockets",
-        debug: 3,
+        debug: 1,
         secure: false,
       });
       addActivityLog({ type: "CREATE_SESSION_REQUESTED" });
@@ -156,8 +156,8 @@ export const usePeer = ({
         })
         .on("connection", (conn: DataConnection) => {
           const peerId = conn.peer;
-          _updatePeers("add", peerId, conn);
           if (peerIsSender) _listenToPeerEvents(peerId, conn);
+          else _updatePeers("add", peerId, conn);
         })
         .on("error", (err: PeerError<string>) => {
           // TODO https://peerjs.com/docs/#peeron-error
