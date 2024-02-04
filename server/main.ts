@@ -1,9 +1,10 @@
 // https://github.com/peers/peerjs-server
 
-import * as express from "express";
+import path from "path";
+import express from "express";
 import helmet from "helmet";
 import * as compression from "compression";
-import * as cors from "cors";
+import cors from "cors";
 import { ExpressPeerServer, IClient, IMessage, PeerServerEvents } from "peer";
 import rateLimit from "express-rate-limit";
 
@@ -119,15 +120,44 @@ peerServer.on("message", (client: IClient, message: IMessage) => {
 });
 
 const roomManager = new RoomManager();
+const isProd = process.env.NODE_ENV === "production";
+
 app.use(
-  cors("*"),
-  helmet(),
   rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour window
     max: 100, // limit each IP to 100 requests per windowMs
   })
 );
+
+if (isProd) {
+  app.use(helmet());
+} else {
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          connectSrc: [
+            "'self'",
+            "http://127.0.0.1:8000",
+            "ws://127.0.0.1:8080",
+          ],
+        },
+      },
+    })
+  );
+}
+
 app.use("/sockets", peerServer);
+app.use(cors("*"));
+
+if (isProd) {
+  app.use(express.static("../client/build"));
+}
+app.get("*", (_, res) => {
+  console.log(path.resolve("../client/build/index.html"));
+  res.sendFile(path.resolve("../client/build/index.html"));
+});
 app.use(errorHandler);
 
 server.listen(port, () => console.log(`listening on ${port}`));

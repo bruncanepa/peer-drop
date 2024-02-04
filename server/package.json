@@ -5,7 +5,9 @@
   "main": "server.ts",
   "scripts": {
     "start": "NODE_ENV=development NODE_PORT=8081 nodemon main.ts",
-    "test": "jest"
+    "test": "jest",
+    "build": "rm -rf build && tsc",
+    "prod": "NODE_ENV=production NODE_PORT=8080 node build/main.js"
   },
   "dependencies": {
     "compression": "^1.7.4",

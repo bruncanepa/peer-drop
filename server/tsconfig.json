@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
-    "types": ["node"]
-  }
+    "esModuleInterop": true,
+    "types": ["node"],
+    "outDir": "build"
+  },
 }

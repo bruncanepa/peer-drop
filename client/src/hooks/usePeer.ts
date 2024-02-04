@@ -24,6 +24,7 @@ import {
   ServerMessageWrapped,
 } from "dto/server";
 import { useUpdatableRef } from "./useUpdatableRef";
+import Config from "config";
 
 export type OnReceiveMessageFnType = (peerId: string, msg: PeerMessage) => any;
 
@@ -142,11 +143,11 @@ export const usePeer = ({
   const startSession = (): Promise<string> =>
     new Promise<string>((resolve, reject) => {
       myPeerRef.current = new Peer(genPeerId(), {
-        host: "127.0.0.1",
-        port: 8081,
-        path: "/sockets",
-        debug: 1,
-        secure: false,
+        host: Config.get().server.host,
+        port: Config.get().server.port,
+        path: Config.get().server.socketsPath,
+        debug: Config.get().server.logLevel,
+        secure: Config.get().server.secure,
       });
       addActivityLog({ type: "CREATE_SESSION_REQUESTED" });
       myPeerRef.current

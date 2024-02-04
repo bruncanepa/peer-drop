@@ -3,12 +3,10 @@ import { unpack } from "peerjs-js-binarypack";
 import { usePeer } from "./usePeer";
 import { Room } from "dto/server";
 import {
-  Chunk,
   DataFile,
   DataFileList,
   DataFileListItem,
   FilesDownloadReq,
-  PEERJS_CHUNK_SIZE,
   PeerAliasReq,
   PeerMessage,
 } from "dto/peer";
@@ -22,6 +20,7 @@ import {
 import { useUpdatableRef } from "./useUpdatableRef";
 import { ImmutableArray } from "utils/array";
 import { useMultipleProgress } from "./useMultipleProgess";
+import { Chunk, PEERJS_CHUNK_SIZE } from "libs/peer";
 
 interface usePeerReceiverProps {
   roomId: string;
