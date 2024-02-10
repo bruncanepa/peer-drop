@@ -117,14 +117,13 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
     const message = unpack<Chunk | PeerMessage>(event.data);
     if (message.__peerData && message.total) {
       const chunk = message as Chunk;
-      const fivePercentage = Math.trunc(chunk.total * 0.05);
+      const xPercentage = Math.trunc(chunk.total * 0.05);
       const isLastChunk = chunk.n === chunk.total - 1; // first chunk.n is value 0
-      if (isLastChunk || chunk.n % fivePercentage === 0) {
+      if (isLastChunk || chunk.n % xPercentage === 0) {
         // update every 5% progress or when completed
-        const progress = isLastChunk ? chunk.total : chunk.n;
         onProgress(
           filesMapByTransferIdRef.current[chunk.__peerData],
-          progress,
+          chunk.n + 1,
           chunk.total
         );
       }
@@ -169,7 +168,7 @@ export const usePeerReceiver = ({ roomId }: usePeerReceiverProps) => {
             { ...files[0], selected: !files[0].selected },
             "id"
           )
-        : files.map((f) => ({ ...f, selected: selectAllValue }))
+        : fs.map((f) => ({ ...f, selected: selectAllValue }))
     );
 
   const roomOnwerPeer = peers.length ? peers[0] : undefined;

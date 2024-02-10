@@ -39,8 +39,9 @@ export const Files: FC<FilesProps> = ({
           </Button>
           <Flex columnGap="0.5em" margin="3% 0 3% 0">
             <Checkbox
-              onChange={(event) => onClickItem(files, event.target.checked)}
+              onChange={(event) => onClickItem([], event.target.checked)}
               isDisabled={isDisabled}
+              isChecked={files.every((f) => f.selected)}
             />
             <Text fontWeight="bold">Select all</Text>
           </Flex>
